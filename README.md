@@ -4,7 +4,7 @@
 ## Installation and Setup
 
 ```
-git clone <dir>
+git clone https://github.com/cjordan223/PhishFinder
 cd PhishFinder
 npm install
 npm run build
