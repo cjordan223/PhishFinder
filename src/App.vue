@@ -4,8 +4,7 @@
       <header>
         <nav>
           <h1>Phish Finder</h1>
-          <router-link v-if="!isLoggedIn" to="/login">Login</router-link>
-          <button v-if="isLoggedIn" @click="logout">Logout</button>
+           <button @click="logout" class="logout-button">Logout</button>  <!-- Logout button -->
         </nav>
       </header>
   
@@ -36,17 +35,22 @@
     },
     methods: {
       logout() {
-        chrome.identity.getAuthToken({ interactive: false }, (token) => {
-          if (token) {
-            chrome.identity.removeCachedAuthToken({ token }, () => {
-              chrome.storage.local.set({ loggedOut: true }, () => {
-                console.log('Logged out, redirecting to login page');
-                window.location.href = '/login'; // Redirect to login
-              });
+      chrome.identity.getAuthToken({ interactive: false }, (token) => {
+        if (token) {
+          chrome.identity.removeCachedAuthToken({ token }, () => {
+            chrome.storage.local.set({ loggedOut: true }, () => {
+              console.log('Logged out, redirecting to login page');
+              this.$router.replace('/login');  // Redirect to login after logout
             });
-          }
-        });
-      },
+          });
+        } else {
+          chrome.storage.local.set({ loggedOut: true }, () => {
+            console.log('No token found, redirecting to login');
+            this.$router.replace('/login');  // Redirect to login if no token found
+          });
+        }
+      });
+    },
     },
   };
   </script>

@@ -3,8 +3,7 @@
     <div class="header">
       <img src="/images/logo2.png" alt="Phish Finder Logo" class="logo" />
       <h1 class="title">Phish Finder</h1>
-      <button @click="logout" class="logout-button">Logout</button>  <!-- Logout button -->
-    </div>
+     </div>
 
     <!-- Fetch Emails Button -->
     <button v-if="!emails.length && !loading" @click="fetchEmails(null)" class="fetch-button">Fetch Emails</button>
@@ -88,23 +87,7 @@ export default {
   },
 
   methods: {
-    logout() {
-      chrome.identity.getAuthToken({ interactive: false }, (token) => {
-        if (token) {
-          chrome.identity.removeCachedAuthToken({ token }, () => {
-            chrome.storage.local.set({ loggedOut: true }, () => {
-              console.log('Logged out, redirecting to login page');
-              this.$router.replace('/login');  // Redirect to login after logout
-            });
-          });
-        } else {
-          chrome.storage.local.set({ loggedOut: true }, () => {
-            console.log('No token found, redirecting to login');
-            this.$router.replace('/login');  // Redirect to login if no token found
-          });
-        }
-      });
-    },
+
     fetchEmails(pageToken = null, isBackground = false) {
       if (!pageToken && this.emails.length > 0 && !isBackground) {
         this.paginateEmails(); // Load from cache if already fetched
