@@ -1,0 +1,103 @@
+/* src/assets/main.css */
+html, body {
+  width: 415px;
+  height: 667px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* Hide overflow */
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  border-radius: 15px; /* Rounded corners for the app container */
+  overflow: auto; /* Allow scrolling within the app */
+}
+
+.app-container {
+  max-width: 100%;
+  height: auto;
+  border-radius: 15px;
+  overflow-y: auto; /* Ensure content within container is scrollable if it overflows */
+}
+
+.header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+.title {
+  font-size: 24px;
+  color: #333;
+  font-weight: bold;
+}
+
+.fetch-button, .logout-button, .pagination-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin: 10px auto;
+  width: 100%;
+}
+
+.fetch-button:hover, .logout-button:hover, .pagination-button:hover {
+  background-color: #0056b3;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.loading-spinner {
+  font-size: 18px;
+  color: #007bff;
+}
+
+.error-message {
+  text-align: center;
+  color: red;
+  margin-top: 10px;
+}
+
+.email-list {
+  padding: 0;
+  margin: 20px 0;
+  list-style: none;
+}
+
+.email-item {
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.email-snippet {
+  margin-top: 5px;
+  color: #666;
+}
+
+.no-emails-message {
+  text-align: center;
+  color: #888;
+}
