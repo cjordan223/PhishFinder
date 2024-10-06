@@ -3,6 +3,14 @@
  
 ## Installation and Setup
 
+```
+git clone <dir>
+cd PhishFinder
+npm install
+npm run build
+
+```
+
 
 You can store project files here:
 https://drive.google.com/drive/folders/15DF2BLvgvxBKGczPNsFGfVOBpZqoIFGX?usp=sharing
