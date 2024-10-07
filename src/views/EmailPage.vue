@@ -1,61 +1,66 @@
 <template>
-  <div class="app-container">
-    <div class="header">
-      <img src="/images/logo2.png" alt="Phish Finder Logo" class="logo" />
-      <h1 class="title">Phish Finder</h1>
-     </div>
-
-    <!-- Fetch Emails Button -->
-    <button v-if="!emails.length && !loading" @click="fetchEmails(null)" class="fetch-button">Fetch Emails</button>
-
-    <!-- Loading Spinner -->
-    <div v-if="loading" class="loading-container">
-      <div class="loading-spinner">Loading...</div>
+  <div class="max-w-4xl mx-auto p-4">
+    <div class="flex items-center justify-between bg-blue-500 text-white p-4 rounded-md mb-4">
+      <h1 class="text-xl font-bold">Phish Finder</h1>
+      <button @click="logout" class="bg-red-500 py-2 px-4 rounded-lg hover:bg-red-600">
+        Logout
+      </button>
     </div>
 
-    <!-- Error Message -->
-    <div v-if="error" class="error-message">{{ errorMessage }}</div>
+    <button v-if="!emails.length && !loading" @click="fetchEmails(null)" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600">
+      Fetch Emails
+    </button>
+
+    <div v-if="loading" class="text-center text-blue-500">Loading...</div>
+
+    <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
 
     <!-- Email List -->
-    <ul v-if="!loading && paginatedEmails.length > 0" class="email-list">
-      <li v-for="email in paginatedEmails" :key="email.id" class="email-item" @click="openEmailModal(email)">
+    <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
+      <li v-for="email in paginatedEmails" :key="email.id" class="p-4 bg-white shadow rounded-lg cursor-pointer hover:shadow-lg transition"
+          @click="openEmailModal(email)">
         <strong>{{ email?.subject || 'No Subject' }}</strong>
-        <p class="email-sender">From: {{ email?.from || 'Unknown Sender' }}</p>
-        <p class="email-date">Date: {{ formatDate(email?.date) || 'Unknown Date' }}</p>
-        <p class="email-snippet">{{ truncateSnippet(email?.snippet || 'No Snippet') }}</p>
-        <p v-if="email.phishingDetected" class="warning-text">⚠️ Possible Phishing Attempt</p>
-        <p v-if="email.aiGenerated" class="warning-text">🤖 AI-Generated Content</p>
+        <p class="text-sm text-gray-500">From: {{ email?.from || 'Unknown Sender' }}</p>
+        <p class="text-sm text-gray-500">Date: {{ formatDate(email?.date) || 'Unknown Date' }}</p>
+        <p class="truncate">{{ truncateSnippet(email?.snippet || 'No Snippet') }}</p>
       </li>
     </ul>
 
     <!-- Pagination Controls -->
-    <div v-if="emails.length > 0" class="pagination-controls">
-      <button @click.prevent="prevPage" :disabled="currentPage === 1" class="pagination-button">Previous</button>
-      <button @click.prevent="goToHome" class="pagination-button">Home</button>
-      <button @click.prevent="nextPage" :disabled="nextPageDisabled" class="pagination-button">Next</button>
+    <div v-if="emails.length > 0" class="flex justify-between mt-6">
+      <button @click.prevent="prevPage" :disabled="currentPage === 1" class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 disabled:bg-gray-300">
+        Previous
+      </button>
+      <button @click.prevent="goToHome" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
+        Home
+      </button>
+      <button @click.prevent="nextPage" :disabled="nextPageDisabled" class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 disabled:bg-gray-300">
+        Next
+      </button>
     </div>
+  </div>
 
-    <p v-else-if="!loading && !error" class="no-emails-message">No emails found.</p>
-
-    <!-- Email Modal -->
-    <div v-if="selectedEmail" class="email-modal">
-      <div class="modal-content">
-        <h2>{{ selectedEmail?.subject || 'No Subject' }}</h2>
-        <p><strong>From:</strong> {{ selectedEmail?.from || 'Unknown Sender' }}</p>
-        <p><strong>Date:</strong> {{ formatDate(selectedEmail?.date) || 'Unknown Date' }}</p>
-        <p><strong>Snippet:</strong> {{ selectedEmail?.snippet || 'No Snippet' }}</p>
-        <div v-if="selectedEmail.body" class="email-body">
-          <h3>Email Body:</h3>
-          <div class="email-body-content" v-html="sanitizeEmailBody(selectedEmail.body)"></div>
-        </div>
-        <button @click="closeEmailModal" class="close-modal-button">Close</button>
+  <!-- Email Modal -->
+  <div v-if="selectedEmail" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+      <h2 class="text-xl font-bold">{{ selectedEmail?.subject || 'No Subject' }}</h2>
+      <p><strong>From:</strong> {{ selectedEmail?.from || 'Unknown Sender' }}</p>
+      <p><strong>Date:</strong> {{ formatDate(selectedEmail?.date) || 'Unknown Date' }}</p>
+      <p><strong>Snippet:</strong> {{ selectedEmail?.snippet || 'No Snippet' }}</p>
+      <div v-if="selectedEmail.body" class="mt-4">
+        <h3 class="font-semibold">Email Body:</h3>
+        <div v-html="sanitizeEmailBody(selectedEmail.body)" class="mt-2"></div>
       </div>
+      <button @click="closeEmailModal" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg mt-6 hover:bg-blue-600">
+        Close
+      </button>
     </div>
   </div>
 </template>
 
 <script>
 export default {
+  // Script remains unchanged
   data() {
     return {
       emails: [],
@@ -81,13 +86,29 @@ export default {
         console.log('User is logged out, redirecting to login');
         this.$router.push('/login');
       } else {
-        this.fetchEmails();  // Proceed to fetch emails if user is logged in
+        this.fetchEmails(); // Proceed to fetch emails if user is logged in
       }
     });
   },
 
   methods: {
-
+    logout() {
+      chrome.identity.getAuthToken({ interactive: false }, (token) => {
+        if (token) {
+          chrome.identity.removeCachedAuthToken({ token }, () => {
+            chrome.storage.local.set({ loggedOut: true }, () => {
+              console.log('Logged out, redirecting to login page');
+              this.$router.replace('/login');
+            });
+          });
+        } else {
+          chrome.storage.local.set({ loggedOut: true }, () => {
+            console.log('No token found, redirecting to login');
+            this.$router.replace('/login');
+          });
+        }
+      });
+    },
     fetchEmails(pageToken = null, isBackground = false) {
       if (!pageToken && this.emails.length > 0 && !isBackground) {
         this.paginateEmails(); // Load from cache if already fetched
@@ -371,4 +392,4 @@ export default {
   overflow-wrap: break-word; /* Break long words */
 }
 </style>
-
+ 
