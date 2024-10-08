@@ -1,29 +1,40 @@
+//vite.config.js
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-
-//https://vite.dev/config/
+import path from 'path';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 export default defineConfig({
-  plugins: [
-    vue(),
-  ],
+  plugins: [vue()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss,
+        autoprefixer,
+      ],
+    },
   },
   build: {
     rollupOptions: {
       input: {
-        popup: 'index.html',  // Entry point for the popup page (Vue app)
-        background: 'src/background.js',  // Background script for the Chrome extension
+        popup: 'index.html',
+        background: 'src/background.js',
       },
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
-      }
-    }
-  }
+      },
+    },
+  },
 });
+//https://vite.dev/config/
+ 
+ 

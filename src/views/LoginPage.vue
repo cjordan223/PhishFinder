@@ -1,10 +1,13 @@
-<!-- src/views/LoginPage.vue -->
 <template>
-  <div class="login-container">
-    <div class="login-content">
-      <h1>Welcome to Phish Finder</h1>
-      <p>Please login with your Google account to continue</p>
-      <button @click="login" class="login-button">Login with Google</button>
+  <div class="min-h-screen flex items-center justify-center bg-gray-100">
+    <div class="bg-white shadow-lg rounded-lg p-8 max-w-sm w-full text-center">
+      <h1 class="text-2xl font-bold mb-4">Welcome to Phish Finder</h1>
+      <p class="text-gray-700 mb-6">Please login with your Google account to continue</p>
+      <button @click="login" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
+        Login with Google
+      </button>
+      <!-- In one of your Vue component templates -->
+ 
     </div>
   </div>
 </template>
@@ -29,42 +32,13 @@ function login() {
   });
 }
 
-// Use `onMounted` lifecycle hook to check if the user is already logged in
+// Auto-login if token exists
 onMounted(() => {
   chrome.identity.getAuthToken({ interactive: false }, (token) => {
     if (token) {
       console.log("Auto-login: Redirecting to emails page");
-      router.push('/emails');  // Auto-redirect if token already exists
+      router.push('/emails');
     }
   });
 });
 </script>
-
-
-<style scoped>
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f9f9f9;
-}
-
-.login-content {
-  text-align: center;
-}
-
-.login-button {
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.login-button:hover {
-  background-color: #0056b3;
-}
-</style>
