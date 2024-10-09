@@ -1,13 +1,134 @@
+// Background script for Chrome Extension
+
+// On extension installation
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('Extension installed');
-  });
+  console.log('Extension installed');
   
-  // Example token retrieval for OAuth flow
-  chrome.identity.getAuthToken({ interactive: true }, function(token) {
-    if (chrome.runtime.lastError || !token) {
-      console.error("OAuth failed: " + chrome.runtime.lastError.message);
+  // Create an alarm to fetch emails periodically (every 5 minutes)
+  chrome.alarms.create('checkEmails', { periodInMinutes: 5 });
+
+  // Set an event listener for the alarm
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'checkEmails') {
+      fetchAndAnalyzeEmails(); // Trigger email fetching and analysis
+    }
+  });
+});
+
+// Fetch and analyze emails when the alarm is triggered
+function fetchAndAnalyzeEmails() {
+  chrome.identity.getAuthToken({ interactive: false }, function(token) {
+    if (!token) {
+      console.error("Failed to retrieve token");
       return;
     }
-    console.log('Token obtained:', token);
+
+    console.log('Fetching emails with token:', token);
+
+    // Gmail API call to get the user's inbox messages
+    const url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=10';
+    
+    fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(response => response.json())
+      .then(async (data) => {
+        if (data.error) {
+          console.error('Error fetching email list:', data.error);
+          return;
+        }
+
+        if (data.messages && data.messages.length > 0) {
+          console.log(`Fetched ${data.messages.length} emails.`);
+          // Fetch each email's details and analyze them
+          const emailDetails = await Promise.all(data.messages.map((msg) => fetchEmailDetails(token, msg.id)));
+          analyzeEmails(emailDetails);
+        } else {
+          console.log('No emails found.');
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching emails:', error);
+      });
   });
-  
+}
+
+// Fetch email details from Gmail API for a specific message ID
+function fetchEmailDetails(token, messageId) {
+  const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
+
+  return fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  .then(response => response.json())
+  .then(email => {
+    if (!email.payload || !email.payload.headers) {
+      return null;
+    }
+
+    // Extract email details such as subject, from, and body
+    const body = extractEmailBody(email.payload);
+
+    return {
+      id: email.id,
+      subject: parseHeader(email.payload.headers, 'Subject'),
+      from: parseHeader(email.payload.headers, 'From'),
+      date: parseHeader(email.payload.headers, 'Date'),
+      snippet: email.snippet,
+      body,
+    };
+  })
+  .catch(error => {
+    console.error('Error fetching email details:', error);
+    return null;
+  });
+}
+
+// Extract the body from the email payload
+function extractEmailBody(payload) {
+  let body = '';
+
+  if (payload.parts) {
+    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
+    if (htmlPart && htmlPart.body && htmlPart.body.data) {
+      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    }
+  } else if (payload.body && payload.body.data) {
+    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+  }
+
+  return body || 'No body content available';
+}
+
+// Analyze the emails for phishing threats (basic example, you can extend this logic)
+function analyzeEmails(emails) {
+  emails.forEach(email => {
+    if (email && emailIsSuspicious(email)) {
+      console.warn('Suspicious email detected:', email);
+      notifyUser(email); // Notify the user about the suspicious email
+    }
+  });
+}
+
+// Basic phishing detection logic (customize as needed)
+function emailIsSuspicious(email) {
+  const phishingKeywords = ['urgent', 'password', 'suspicious', 'reset', 'verify'];
+  return phishingKeywords.some(keyword => email.subject && email.subject.toLowerCase().includes(keyword));
+}
+
+// Notify the user about the suspicious email
+function notifyUser(email) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icon.png', // Provide your extension's icon here
+    title: 'Phishing Alert',
+    message: `Suspicious email detected from ${email.from}: ${email.subject}`,
+    priority: 2
+  });
+}
+
+// Helper function to parse a header value from email headers
+function parseHeader(headers, name) {
+  const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
+  return header ? header.value : 'Unknown';
+}

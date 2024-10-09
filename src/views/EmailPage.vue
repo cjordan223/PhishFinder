@@ -17,15 +17,16 @@
     <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
 
     <!-- Email List -->
-    <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
-      <li v-for="email in paginatedEmails" :key="email.id" class="p-4 bg-white shadow rounded-lg cursor-pointer hover:shadow-lg transition"
-          @click="openEmailModal(email)">
-        <strong>{{ email?.subject || 'No Subject' }}</strong>
-        <p class="text-sm text-gray-500">From: {{ email?.from || 'Unknown Sender' }}</p>
-        <p class="text-sm text-gray-500">Date: {{ formatDate(email?.date) || 'Unknown Date' }}</p>
-        <p class="truncate">{{ truncateSnippet(email?.snippet || 'No Snippet') }}</p>
-      </li>
-    </ul>
+<ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
+  <li v-for="email in paginatedEmails" :key="email.id" class="p-4 bg-white shadow rounded-lg cursor-pointer hover:shadow-lg transition"
+      @click="openEmailModal(email)">
+    <strong>{{ email?.subject || 'No Subject' }}</strong>
+    <p class="text-sm text-gray-500">From: {{ email?.from || 'Unknown Sender' }}</p>
+    <p class="text-sm text-gray-500">Date: {{ formatDate(email?.date) || 'Unknown Date' }}</p>
+    <p class="truncate" v-html="sanitizeEmailBody(email?.snippet || 'No Snippet')"></p>
+  </li>
+</ul>
+
 
     <!-- Pagination Controls -->
     <div v-if="emails.length > 0" class="flex justify-between mt-6">
@@ -99,237 +100,237 @@ export default {
   },
 
   methods: {
-    openEmailModal(email) {
-      this.selectedEmail = email;
-      document.querySelector("[data-modal-toggle='email-modal']").click(); // Trigger the modal to open
-    },
-    closeEmailModal() {
-      this.selectedEmail = null;
-    },
-    sanitizeEmailBody(body) {
-      return DOMPurify.sanitize(body); // Ensure DOMPurify is imported and configured
-    },
-    logout() {
-      chrome.identity.getAuthToken({ interactive: false }, (token) => {
-        if (token) {
-          chrome.identity.removeCachedAuthToken({ token }, () => {
-            chrome.storage.local.set({ loggedOut: true }, () => {
-              console.log('Logged out, redirecting to login page');
-              this.$router.replace('/login');
-            });
-          });
-        } else {
+  openEmailModal(email) {
+    this.selectedEmail = email;
+    document.querySelector("[data-modal-toggle='email-modal']").click(); // Trigger the modal to open
+  },
+  closeEmailModal() {
+    this.selectedEmail = null;
+  },
+  sanitizeEmailBody(body) {
+    return DOMPurify.sanitize(body, {USE_PROFILES: {html: true}});
+  },
+  logout() {
+    chrome.identity.getAuthToken({ interactive: false }, (token) => {
+      if (token) {
+        chrome.identity.removeCachedAuthToken({ token }, () => {
           chrome.storage.local.set({ loggedOut: true }, () => {
-            console.log('No token found, redirecting to login');
+            console.log('Logged out, redirecting to login page');
             this.$router.replace('/login');
           });
-        }
-      });
-    },
-    fetchEmails(pageToken = null, isBackground = false) {
-      if (!pageToken && this.emails.length > 0 && !isBackground) {
-        this.paginateEmails(); // Load from cache if already fetched
+        });
+      } else {
+        chrome.storage.local.set({ loggedOut: true }, () => {
+          console.log('No token found, redirecting to login');
+          this.$router.replace('/login');
+        });
+      }
+    });
+  },
+  fetchEmails(pageToken = null, isBackground = false) {
+    if (!pageToken && this.emails.length > 0 && !isBackground) {
+      this.paginateEmails(); // Load from cache if already fetched
+      return;
+    }
+
+    this.loading = !isBackground;
+    chrome.identity.getAuthToken({ interactive: true }, (token) => {
+      if (!token) {
+        this.handleError('Unable to get the token');
+        this.loading = false;
         return;
       }
 
-      this.loading = !isBackground;
-      chrome.identity.getAuthToken({ interactive: true }, (token) => {
-        if (!token) {
-          this.handleError('Unable to get the token');
-          this.loading = false;
-          return;
-        }
-
-        this.fetchEmailList(token, pageToken)
-          .then(() => {
-            if (!isBackground) {
-              this.loading = false;
-              this.paginateEmails();
-            }
-            if (this.totalFetchedEmails < this.maxEmails && this.nextPageToken && !this.backgroundFetching) {
-              this.lazyLoadEmails(token);
-            }
-          })
-          .catch((err) => {
-            this.handleError('Failed to fetch emails');
-            this.loading = false;
-          });
-      });
-    },
-
-    fetchEmailList(token, pageToken = null) {
-  const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-  url.searchParams.append('maxResults', this.emailLimit.toString());
-  url.searchParams.append('labelIds', 'INBOX');
-  if (pageToken) {
-    url.searchParams.append('pageToken', pageToken);
-  }
-
-  return fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  .then(response => response.json())
-  .then(async (data) => {
-    if (data.error) {
-      throw new Error(`Failed to fetch email list: ${data.error.message}`);
-    }
-
-    if (data.messages) {
-      const fetchPromises = data.messages.map((msg) => this.fetchEmailDetails(token, msg.id));
-      const fetchedEmails = await Promise.all(fetchPromises);
-      // Apply HTML parsing here as well
-      this.emails = [...this.emails, ...fetchedEmails.filter((email) => email)];
-      this.totalFetchedEmails += fetchedEmails.length;
-      this.nextPageToken = data.nextPageToken || null;
-    } else {
-      this.nextPageToken = null;
-    }
-  })
-  .catch((error) => {
-    console.error('Error fetching email list:', error);
-    this.handleError('Error fetching email list');
-  });
-},
-
-
-    lazyLoadEmails(token) {
-      if (!this.nextPageToken || this.totalFetchedEmails >= this.maxEmails) return;
-
-      this.backgroundFetching = true;
-
-      this.fetchEmailList(token, this.nextPageToken)
+      this.fetchEmailList(token, pageToken)
         .then(() => {
-          this.backgroundFetching = false;
-          if (this.totalFetchedEmails < this.maxEmails && this.nextPageToken) {
+          if (!isBackground) {
+            this.loading = false;
+            this.paginateEmails();
+          }
+          if (this.totalFetchedEmails < this.maxEmails && this.nextPageToken && !this.backgroundFetching) {
             this.lazyLoadEmails(token);
           }
         })
-        .catch(() => {
-          this.backgroundFetching = false;
+        .catch((err) => {
+          this.handleError('Failed to fetch emails');
+          this.loading = false;
         });
-    },
-// refer to this thread for the fix
-// https://stackoverflow.com/questions/24428246/retrieve-email-message-body-in-html-using-gmail-api/24433196#24433196
-  
-fetchEmailDetails(token, messageId) {
-  const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
+    });
+  },
 
-  return fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  .then(response => response.json())
-  .then(email => {
-    if (!email.payload || !email.payload.headers) {
-      return null;
-    }
+  fetchEmailList(token, pageToken = null) {
+const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+url.searchParams.append('maxResults', this.emailLimit.toString());
+url.searchParams.append('labelIds', 'INBOX');
+if (pageToken) {
+  url.searchParams.append('pageToken', pageToken);
+}
 
-    // Handle multipart emails
-    let body = '';
-    if (email.payload.mimeType === 'multipart/alternative' && email.payload.parts) {
-      let htmlPart = email.payload.parts.find(part => part.mimeType === 'text/html');
-      if (htmlPart) {
-        body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      }
-    } else if (email.payload.mimeType === 'text/html') {
-      body = atob(email.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    }
+return fetch(url.toString(), {
+  headers: { Authorization: `Bearer ${token}` },
+})
+.then(response => response.json())
+.then(async (data) => {
+  if (data.error) {
+    throw new Error(`Failed to fetch email list: ${data.error.message}`);
+  }
 
-    return {
-      id: email.id,
-      subject: this.parseHeader(email.payload.headers, 'Subject'),
-      from: this.parseHeader(email.payload.headers, 'From'),
-      date: this.parseHeader(email.payload.headers, 'Date'),
-      snippet: email.snippet,
-      body,
-    };
-  })
-  .catch(error => console.error('Error fetching email:', error));
+  if (data.messages) {
+    const fetchPromises = data.messages.map((msg) => this.fetchEmailDetails(token, msg.id));
+    const fetchedEmails = await Promise.all(fetchPromises);
+    // Apply HTML parsing here as well
+    this.emails = [...this.emails, ...fetchedEmails.filter((email) => email)];
+    this.totalFetchedEmails += fetchedEmails.length;
+    this.nextPageToken = data.nextPageToken || null;
+  } else {
+    this.nextPageToken = null;
+  }
+})
+.catch((error) => {
+  console.error('Error fetching email list:', error);
+  this.handleError('Error fetching email list');
+});
 },
 
 
-    getEmailBody(payload) {
-      if (payload.parts) {
-        const part = payload.parts.find((part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain');
-        if (part && part.body && part.body.data) {
-          return atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+  lazyLoadEmails(token) {
+    if (!this.nextPageToken || this.totalFetchedEmails >= this.maxEmails) return;
+
+    this.backgroundFetching = true;
+
+    this.fetchEmailList(token, this.nextPageToken)
+      .then(() => {
+        this.backgroundFetching = false;
+        if (this.totalFetchedEmails < this.maxEmails && this.nextPageToken) {
+          this.lazyLoadEmails(token);
         }
-      } else if (payload.body && payload.body.data) {
-        return atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      }
-      return 'No body content available.';
-    },
-
-    sanitizeEmailBody(body) {
-      return body.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/&nbsp;/g, ' ');
-    },
-
-    paginateEmails() {
-      if (this.cache[this.currentPage]) {
-        this.paginatedEmails = this.cache[this.currentPage];
-      } else {
-        const startIndex = (this.currentPage - 1) * this.emailsPerPage;
-        const endIndex = startIndex + this.emailsPerPage;
-        this.paginatedEmails = this.emails.slice(startIndex, endIndex);
-        this.cacheEmails(this.paginatedEmails);
-      }
-    },
-
-    cacheEmails(emails) {
-      if (!this.cache[this.currentPage]) {
-        this.cache[this.currentPage] = emails;
-      }
-    },
-
-    nextPage() {
-      if (this.currentPage * this.emailsPerPage < this.emails.length) {
-        this.currentPage++;
-        this.paginateEmails();
-      } else if (this.nextPageToken && typeof this.nextPageToken === 'string') {
-        this.fetchEmails(this.nextPageToken);
-      }
-    },
-
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--;
-        this.paginateEmails();
-      }
-    },
-
-    goToHome() {
-      this.currentPage = 1;
-      this.paginateEmails();
-    },
-
-    parseHeader(headers, name) {
-      const header = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
-      return header ? header.value : 'Unknown';
-    },
-
-    formatDate(date) {
-      const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-      return new Date(date).toLocaleDateString(undefined, options);
-    },
-
-    truncateSnippet(snippet) {
-      const maxLength = 100;
-      return snippet.length > maxLength ? `${snippet.substring(0, maxLength)}...` : snippet;
-    },
-
-    handleError(message) {
-      this.loading = false;
-      this.error = true;
-      this.errorMessage = message;
-    },
-
-    openEmailModal(email) {
-      this.selectedEmail = email;
-    },
-
-    closeEmailModal() {
-      this.selectedEmail = null;
-    },
+      })
+      .catch(() => {
+        this.backgroundFetching = false;
+      });
   },
+// refer to this thread for the fix
+// https://stackoverflow.com/questions/24428246/retrieve-email-message-body-in-html-using-gmail-api/24433196#24433196
+
+fetchEmailDetails(token, messageId) {
+const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
+
+return fetch(url, {
+  headers: { Authorization: `Bearer ${token}` },
+})
+.then(response => response.json())
+.then(email => {
+  if (!email.payload || !email.payload.headers) {
+    return null;
+  }
+
+  // Handle multipart emails
+  let body = '';
+  if (email.payload.mimeType === 'multipart/alternative' && email.payload.parts) {
+    let htmlPart = email.payload.parts.find(part => part.mimeType === 'text/html');
+    if (htmlPart) {
+      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    }
+  } else if (email.payload.mimeType === 'text/html') {
+    body = atob(email.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+  }
+
+  return {
+    id: email.id,
+    subject: this.parseHeader(email.payload.headers, 'Subject'),
+    from: this.parseHeader(email.payload.headers, 'From'),
+    date: this.parseHeader(email.payload.headers, 'Date'),
+    snippet: email.snippet,
+    body,
+  };
+})
+.catch(error => console.error('Error fetching email:', error));
+},
+
+
+  getEmailBody(payload) {
+    if (payload.parts) {
+      const part = payload.parts.find((part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain');
+      if (part && part.body && part.body.data) {
+        return atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+      }
+    } else if (payload.body && payload.body.data) {
+      return atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    }
+    return 'No body content available.';
+  },
+
+  sanitizeEmailBody(body) {
+    return body.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/&nbsp;/g, ' ');
+  },
+
+  paginateEmails() {
+    if (this.cache[this.currentPage]) {
+      this.paginatedEmails = this.cache[this.currentPage];
+    } else {
+      const startIndex = (this.currentPage - 1) * this.emailsPerPage;
+      const endIndex = startIndex + this.emailsPerPage;
+      this.paginatedEmails = this.emails.slice(startIndex, endIndex);
+      this.cacheEmails(this.paginatedEmails);
+    }
+  },
+
+  cacheEmails(emails) {
+    if (!this.cache[this.currentPage]) {
+      this.cache[this.currentPage] = emails;
+    }
+  },
+
+  nextPage() {
+    if (this.currentPage * this.emailsPerPage < this.emails.length) {
+      this.currentPage++;
+      this.paginateEmails();
+    } else if (this.nextPageToken && typeof this.nextPageToken === 'string') {
+      this.fetchEmails(this.nextPageToken);
+    }
+  },
+
+  prevPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.paginateEmails();
+    }
+  },
+
+  goToHome() {
+    this.currentPage = 1;
+    this.paginateEmails();
+  },
+
+  parseHeader(headers, name) {
+    const header = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
+    return header ? header.value : 'Unknown';
+  },
+
+  formatDate(date) {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(date).toLocaleDateString(undefined, options);
+  },
+
+  truncateSnippet(snippet) {
+    const maxLength = 100;
+    return snippet.length > maxLength ? `${snippet.substring(0, maxLength)}...` : snippet;
+  },
+
+  handleError(message) {
+    this.loading = false;
+    this.error = true;
+    this.errorMessage = message;
+  },
+
+  openEmailModal(email) {
+    this.selectedEmail = email;
+  },
+
+  closeEmailModal() {
+    this.selectedEmail = null;
+  },
+},
 
   computed: {
     nextPageDisabled() {
@@ -337,6 +338,8 @@ fetchEmailDetails(token, messageId) {
     },
   },
 };
+
+
 </script>
 <style scoped>
 /* Existing styles */
