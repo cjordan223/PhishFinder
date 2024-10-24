@@ -3,7 +3,7 @@
     <!-- Main layout structure -->
     <header class="flex justify-between items-center p-4 bg-blue-500 text-white">
       <nav>
-        <!-- You can add nav items here if needed -->
+        <!--  can add nav items here if needed -->
       </nav>
     </header>
 

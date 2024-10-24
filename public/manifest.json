@@ -8,6 +8,7 @@
       "identity.email",
       "alarms",
       "storage",
+      "http://localhost:3001/*",   
       "notifications",
       "https://www.googleapis.com/"
     ],

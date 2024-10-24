@@ -113,6 +113,7 @@ export default {
       nextPageToken: null,
       backgroundFetching: false,
       totalFetchedEmails: 0,
+      analysisResult: null,  // Added this to store the result
     };
   },
 
@@ -124,15 +125,42 @@ export default {
     closeEmailModal() {
       this.selectedEmail = null;
     },
-    analyzeEmail() {
-      if (this.selectedEmail) {
-        // Add your analysis logic here, e.g., call an API or run some logic
-        console.log("Analyzing email:", this.selectedEmail);
-        // You can also add additional code to display analysis results.
-      } else {
+    async analyzeEmail() {
+      if (!this.selectedEmail) {
         console.error("No email selected for analysis.");
+        return;
       }
-    },
+
+      const emailSnippet = this.selectedEmail.body || 'No Snippet';
+
+      if (emailSnippet.length < 300) {
+        console.error("The text is too short to analyze reliably.");
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:3001/api/analyze', {  // Use the absolute URL for your backend
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: emailSnippet,
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log("AI Detection Result:", result);
+        alert(`Human Score: ${result.score}. This email is ${result.score}% likely to be written by a human.`);
+      } catch (error) {
+        console.error("Failed to analyze email:", error);
+      }
+    }
+    ,
     sanitizeEmailBody(body) {
       return DOMPurify.sanitize(body, { USE_PROFILES: { html: true } });
     },

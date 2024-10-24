@@ -1,11 +1,10 @@
-//vite.config.js
-import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite';  // Ensure this import is correct
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 
+// Ensure you're using defineConfig here
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -35,6 +34,3 @@ export default defineConfig({
     },
   },
 });
-//https://vite.dev/config/
- 
- 

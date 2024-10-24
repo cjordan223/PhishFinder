@@ -100,15 +100,7 @@ function extractEmailBody(payload) {
   return body || 'No body content available';
 }
 
-// Analyze the emails for phishing threats (basic example, you can extend this logic)
-function analyzeEmails(emails) {
-  emails.forEach(email => {
-    if (email && emailIsSuspicious(email)) {
-      console.warn('Suspicious email detected:', email);
-      notifyUser(email); // Notify the user about the suspicious email
-    }
-  });
-}
+
 
 // Basic phishing detection logic (customize as needed)
 function emailIsSuspicious(email) {
@@ -116,16 +108,7 @@ function emailIsSuspicious(email) {
   return phishingKeywords.some(keyword => email.subject && email.subject.toLowerCase().includes(keyword));
 }
 
-// Notify the user about the suspicious email
-function notifyUser(email) {
-  chrome.notifications.create({
-    type: 'basic',
-    iconUrl: 'icon.png', // Provide your extension's icon here
-    title: 'Phishing Alert',
-    message: `Suspicious email detected from ${email.from}: ${email.subject}`,
-    priority: 2
-  });
-}
+
 
 // Helper function to parse a header value from email headers
 function parseHeader(headers, name) {
