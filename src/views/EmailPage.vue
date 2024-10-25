@@ -5,12 +5,6 @@
       <button @click="logout" class="bg-red-500 py-2 px-4 rounded-lg hover:bg-red-600">Logout</button>
     </div>
 
-    <!-- Fetch Emails Button -->
-    <button v-if="!emails.length && !loading" @click="fetchEmails(null)"
-      class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600">
-      Fetch Emails
-    </button>
-
     <!-- Loading Spinner -->
     <div v-if="loading" class="text-center text-blue-500">Loading...</div>
 
@@ -22,81 +16,38 @@
       <li v-for="email in paginatedEmails" :key="email.id"
         class="p-4 bg-white shadow rounded-lg cursor-pointer hover:shadow-lg transition" @click="openEmailModal(email)">
         <strong>{{ email?.subject || 'No Subject' }}</strong>
+
+        <!-- Flagged Email Indicator -->
+        <div v-if="email.isFlagged" class="flex items-center space-x-2 text-red-500">
+          <img src="/images/icon128s.png" alt="suspicious" class="w-6 h-6" />
+          <span>🚩 Suspicious</span>
+        </div>
+
         <p class="text-sm text-gray-500">From: {{ email?.from || 'Unknown Sender' }}</p>
         <p class="text-sm text-gray-500">Date: {{ formatDate(email?.date) || 'Unknown Date' }}</p>
         <p class="truncate" v-html="sanitizeEmailBody(email?.snippet || 'No Snippet')"></p>
       </li>
     </ul>
 
-
     <!-- Pagination Controls -->
-    <div v-if="emails.length > 0" class="flex justify-between mt-6">
-      <button @click.prevent="prevPage" :disabled="currentPage === 1"
-        class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 disabled:bg-gray-300">
-        Previous
-      </button>
-      <button @click.prevent="goToHome" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-        Home
-      </button>
-      <button @click.prevent="nextPage" :disabled="nextPageDisabled"
-        class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 disabled:bg-gray-300">
-        Next
-      </button>
-    </div>
+    <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
+      @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
   </div>
 
-  <!-- Modal Toggle Button (For testing purposes) -->
-  <button data-modal-target="email-modal" data-modal-toggle="email-modal" class="hidden"></button>
-
-  <!-- Tailwind Modal Structure for Email Details -->
-  <div v-if="selectedEmail" id="email-modal" tabindex="-1"
-    class="fixed inset-0 z-50 justify-center items-center w-full h-full bg-black bg-opacity-50 overflow-y-auto">
-    <div class="relative p-4 w-full max-w-2xl max-h-full mx-auto">
-      <!-- Modal Content -->
-      <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between p-4 md:p-5 border-b dark:border-gray-600">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ selectedEmail?.subject || 'No Subject' }}
-          </h3>
-          <button @click="closeEmailModal"
-            class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1.5 dark:hover:bg-gray-600 dark:hover:text-white">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-            <span class="sr-only">Close modal</span>
-          </button>
-        </div>
-        <!-- Modal Body -->
-        <div class="p-4 space-y-4 md:p-5">
-          <p><strong>From:</strong> {{ selectedEmail?.from || 'Unknown Sender' }}</p>
-          <p><strong>Date:</strong> {{ formatDate(selectedEmail?.date) || 'Unknown Date' }}</p>
-          <div v-if="selectedEmail.body" class="text-gray-800 dark:text-gray-200"
-            v-html="sanitizeEmailBody(selectedEmail.body)"></div>
-        </div>
-        <!-- Modal Footer with Close and Analyze buttons -->
-        <div class="flex items-center justify-end p-4 md:p-5 border-t dark:border-gray-600">
-          <!-- Close Button -->
-          <button @click="closeEmailModal"
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-            Close
-          </button>
-
-          <!-- Analyze Button -->
-          <button @click="analyzeEmail"
-            class="ml-2 text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg px-5 py-2.5 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
-            Analyze
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
+  <!-- Modal code in the component -->
+  <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
 </template>
 
-
 <script>
+import EmailModal from '@/views/EmailModal.vue';
+import PaginationControls from './PaginationControls.vue';
+import { emailIsSuspicious } from '@/utils/utils';
+
 export default {
+  components: {
+    EmailModal,
+    PaginationControls,
+  },
   data() {
     return {
       emails: [],
@@ -115,27 +66,10 @@ export default {
       totalFetchedEmails: 0,
     };
   },
-
+  mounted() {
+    this.fetchEmails();
+  },
   methods: {
-    openEmailModal(email) {
-      this.selectedEmail = email;
-      document.querySelector("[data-modal-toggle='email-modal']").click(); // Trigger the modal to open
-    },
-    closeEmailModal() {
-      this.selectedEmail = null;
-    },
-    analyzeEmail() {
-      if (this.selectedEmail) {
-        // Add your analysis logic here, e.g., call an API or run some logic
-        console.log("Analyzing email:", this.selectedEmail);
-        // You can also add additional code to display analysis results.
-      } else {
-        console.error("No email selected for analysis.");
-      }
-    },
-    sanitizeEmailBody(body) {
-      return DOMPurify.sanitize(body, { USE_PROFILES: { html: true } });
-    },
     logout() {
       chrome.identity.getAuthToken({ interactive: false }, (token) => {
         if (token) {
@@ -153,6 +87,7 @@ export default {
         }
       });
     },
+
     fetchEmails(pageToken = null, isBackground = false) {
       if (!pageToken && this.emails.length > 0 && !isBackground) {
         this.paginateEmails(); // Load from cache if already fetched
@@ -184,7 +119,9 @@ export default {
       });
     },
 
-    fetchEmailList(token, pageToken = null) {
+    // emailpage.vue script
+
+    async fetchEmailList(token, pageToken = null) {
       const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
       url.searchParams.append('maxResults', this.emailLimit.toString());
       url.searchParams.append('labelIds', 'INBOX');
@@ -192,32 +129,56 @@ export default {
         url.searchParams.append('pageToken', pageToken);
       }
 
-      return fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then(response => response.json())
-        .then(async (data) => {
-          if (data.error) {
-            throw new Error(`Failed to fetch email list: ${data.error.message}`);
-          }
-
-          if (data.messages) {
-            const fetchPromises = data.messages.map((msg) => this.fetchEmailDetails(token, msg.id));
-            const fetchedEmails = await Promise.all(fetchPromises);
-            // Apply HTML parsing here as well
-            this.emails = [...this.emails, ...fetchedEmails.filter((email) => email)];
-            this.totalFetchedEmails += fetchedEmails.length;
-            this.nextPageToken = data.nextPageToken || null;
-          } else {
-            this.nextPageToken = null;
-          }
-        })
-        .catch((error) => {
-          console.error('Error fetching email list:', error);
-          this.handleError('Error fetching email list');
+      try {
+        const response = await fetch(url.toString(), {
+          headers: { Authorization: `Bearer ${token}` },
         });
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(`Failed to fetch email list: ${data.error.message}`);
+        }
+
+        if (data.messages) {
+          const fetchPromises = data.messages.map((msg) => this.fetchEmailDetails(token, msg.id));
+          const fetchedEmails = await Promise.all(fetchPromises);
+          this.emails = [...this.emails, ...fetchedEmails.filter((email) => email)];
+          this.totalFetchedEmails += fetchedEmails.length;
+          this.nextPageToken = data.nextPageToken || null;
+
+          // Merge flagged emails from Chrome storage with fetched emails
+          chrome.storage.local.get(['flaggedEmails'], (result) => {
+            console.log('Flagged emails retrieved from storage:', result.flaggedEmails);
+
+            if (result.flaggedEmails) {
+              this.emails = this.emails.map(email => {
+                const flaggedEmail = result.flaggedEmails.find(f => f.id === email.id);
+                if (flaggedEmail) {
+                  email.isFlagged = flaggedEmail.isFlagged;
+                }
+                return email;
+              });
+            }
+
+            this.analyzeEmails(this.emails); // Analyze new emails
+            this.paginateEmails(); // Re-paginate after analysis
+          });
+        } else {
+          this.nextPageToken = null;
+        }
+      } catch (error) {
+        console.error('Error fetching email list:', error);
+        this.handleError('Error fetching email list');
+      }
     },
 
+    analyzeEmails(emails) {
+      emails.forEach(email => {
+        if (email.isFlagged === undefined) {
+          email.isFlagged = emailIsSuspicious(email);
+          console.log('Email analyzed on page:', email.subject, '| isFlagged:', email.isFlagged);
+        }
+      });
+    },
 
     lazyLoadEmails(token) {
       if (!this.nextPageToken || this.totalFetchedEmails >= this.maxEmails) return;
@@ -235,8 +196,6 @@ export default {
           this.backgroundFetching = false;
         });
     },
-    // refer to this thread for the fix
-    // https://stackoverflow.com/questions/24428246/retrieve-email-message-body-in-html-using-gmail-api/24433196#24433196
 
     fetchEmailDetails(token, messageId) {
       const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
@@ -244,22 +203,13 @@ export default {
       return fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(response => response.json())
-        .then(email => {
+        .then((response) => response.json())
+        .then((email) => {
           if (!email.payload || !email.payload.headers) {
             return null;
           }
 
-          // Handle multipart emails
-          let body = '';
-          if (email.payload.mimeType === 'multipart/alternative' && email.payload.parts) {
-            let htmlPart = email.payload.parts.find(part => part.mimeType === 'text/html');
-            if (htmlPart) {
-              body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-            }
-          } else if (email.payload.mimeType === 'text/html') {
-            body = atob(email.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-          }
+          const body = this.getEmailBody(email.payload);
 
           return {
             id: email.id,
@@ -270,18 +220,23 @@ export default {
             body,
           };
         })
-        .catch(error => console.error('Error fetching email:', error));
+        .catch((error) => console.error('Error fetching email:', error));
     },
 
+    decodeBase64Url(data) {
+      return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+    },
 
     getEmailBody(payload) {
       if (payload.parts) {
-        const part = payload.parts.find((part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain');
+        const part = payload.parts.find(
+          (part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain'
+        );
         if (part && part.body && part.body.data) {
-          return atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+          return this.decodeBase64Url(part.body.data);
         }
       } else if (payload.body && payload.body.data) {
-        return atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        return this.decodeBase64Url(payload.body.data);
       }
       return 'No body content available.';
     },
@@ -334,13 +289,14 @@ export default {
     },
 
     formatDate(date) {
-      const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      };
       return new Date(date).toLocaleDateString(undefined, options);
-    },
-
-    truncateSnippet(snippet) {
-      const maxLength = 100;
-      return snippet.length > maxLength ? `${snippet.substring(0, maxLength)}...` : snippet;
     },
 
     handleError(message) {
@@ -352,7 +308,6 @@ export default {
     openEmailModal(email) {
       this.selectedEmail = email;
     },
-
     closeEmailModal() {
       this.selectedEmail = null;
     },
@@ -364,9 +319,8 @@ export default {
     },
   },
 };
-
-
 </script>
+
 <style scoped>
 /* Existing styles */
 .loading-spinner,
@@ -399,72 +353,5 @@ export default {
 .warning-text {
   color: red;
   font-weight: bold;
-}
-
-.pagination-controls {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.email-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow-y: auto;
-  /* Allow scrolling for long content */
-}
-
-.modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  /* Set max height for modal */
-  overflow-y: auto;
-  /* Make modal content scrollable */
-  position: relative;
-  /* Ensure the close button is positioned relative to the modal */
-}
-
-.email-body-content {
-  white-space: pre-wrap;
-  /* Preserve formatting for plain text emails */
-  overflow-wrap: break-word;
-  /* Break long words */
-}
-
-.close-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-/* New styles for the login button */
-.login-button {
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-top: 20px;
-}
-
-.login-button:hover {
-  background-color: #0056b3;
 }
 </style>

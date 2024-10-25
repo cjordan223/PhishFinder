@@ -8,11 +8,13 @@
       "identity.email",
       "alarms",
       "storage",
+      "http://localhost:3001/*",   
       "notifications",
       "https://www.googleapis.com/"
     ],
     "background": {
-      "service_worker": "background.js"
+      "service_worker": "background.js",
+        "type": "module"
     },
     "action": {
       "default_popup": "index.html",
