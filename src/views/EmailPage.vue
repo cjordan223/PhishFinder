@@ -5,12 +5,6 @@
       <button @click="logout" class="bg-red-500 py-2 px-4 rounded-lg hover:bg-red-600">Logout</button>
     </div>
 
-    <!-- Fetch Emails Button
-    <button v-if="!emails.length && !loading" @click="fetchEmails(null)"
-      class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg mb-4 hover:bg-blue-600">
-      Fetch Emails
-    </button> -->
-
     <!-- Loading Spinner -->
     <div v-if="loading" class="text-center text-blue-500">Loading...</div>
 
@@ -25,7 +19,7 @@
 
         <!-- Flagged Email Indicator -->
         <div v-if="email.isFlagged" class="flex items-center space-x-2 text-red-500">
-          <img src="/images/icon128s.png" alt="suspicious" class="w-6 h-6">
+          <img src="/images/icon128s.png" alt="suspicious" class="w-6 h-6" />
           <span>🚩 Suspicious</span>
         </div>
 
@@ -40,7 +34,7 @@
       @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
   </div>
 
-  <!--  modal code in the component -->
+  <!-- Modal code in the component -->
   <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
 </template>
 
@@ -49,11 +43,10 @@ import EmailModal from '@/views/EmailModal.vue';
 import PaginationControls from './PaginationControls.vue';
 import { emailIsSuspicious } from '@/utils/utils';
 
-
 export default {
   components: {
     EmailModal,
-    PaginationControls
+    PaginationControls,
   },
   data() {
     return {
@@ -71,17 +64,12 @@ export default {
       nextPageToken: null,
       backgroundFetching: false,
       totalFetchedEmails: 0,
-      analysisResult: null,  // Added this to store the result
     };
   },
   mounted() {
     this.fetchEmails();
   },
   methods: {
-    closeEmailModal() {
-      this.selectedEmail = null;
-    },
-
     logout() {
       chrome.identity.getAuthToken({ interactive: false }, (token) => {
         if (token) {
@@ -130,6 +118,9 @@ export default {
           });
       });
     },
+
+    // emailpage.vue script
+
     async fetchEmailList(token, pageToken = null) {
       const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
       url.searchParams.append('maxResults', this.emailLimit.toString());
@@ -150,13 +141,14 @@ export default {
         if (data.messages) {
           const fetchPromises = data.messages.map((msg) => this.fetchEmailDetails(token, msg.id));
           const fetchedEmails = await Promise.all(fetchPromises);
-          // Apply HTML parsing here as well
           this.emails = [...this.emails, ...fetchedEmails.filter((email) => email)];
           this.totalFetchedEmails += fetchedEmails.length;
           this.nextPageToken = data.nextPageToken || null;
 
           // Merge flagged emails from Chrome storage with fetched emails
           chrome.storage.local.get(['flaggedEmails'], (result) => {
+            console.log('Flagged emails retrieved from storage:', result.flaggedEmails);
+
             if (result.flaggedEmails) {
               this.emails = this.emails.map(email => {
                 const flaggedEmail = result.flaggedEmails.find(f => f.id === email.id);
@@ -166,10 +158,10 @@ export default {
                 return email;
               });
             }
+
             this.analyzeEmails(this.emails); // Analyze new emails
             this.paginateEmails(); // Re-paginate after analysis
           });
-
         } else {
           this.nextPageToken = null;
         }
@@ -178,10 +170,13 @@ export default {
         this.handleError('Error fetching email list');
       }
     },
-    analyzeEmails(emails) {
 
+    analyzeEmails(emails) {
       emails.forEach(email => {
-        email.isFlagged = emailIsSuspicious(email);
+        if (email.isFlagged === undefined) {
+          email.isFlagged = emailIsSuspicious(email);
+          console.log('Email analyzed on page:', email.subject, '| isFlagged:', email.isFlagged);
+        }
       });
     },
 
@@ -201,8 +196,6 @@ export default {
           this.backgroundFetching = false;
         });
     },
-    // refer to this thread for the fix
-    // https://stackoverflow.com/questions/24428246/retrieve-email-message-body-in-html-using-gmail-api/24433196#24433196
 
     fetchEmailDetails(token, messageId) {
       const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
@@ -210,22 +203,13 @@ export default {
       return fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(response => response.json())
-        .then(email => {
+        .then((response) => response.json())
+        .then((email) => {
           if (!email.payload || !email.payload.headers) {
             return null;
           }
 
-          // Handle multipart emails
-          let body = '';
-          if (email.payload.mimeType === 'multipart/alternative' && email.payload.parts) {
-            let htmlPart = email.payload.parts.find(part => part.mimeType === 'text/html');
-            if (htmlPart) {
-              body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-            }
-          } else if (email.payload.mimeType === 'text/html') {
-            body = atob(email.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-          }
+          const body = this.getEmailBody(email.payload);
 
           return {
             id: email.id,
@@ -236,18 +220,23 @@ export default {
             body,
           };
         })
-        .catch(error => console.error('Error fetching email:', error));
+        .catch((error) => console.error('Error fetching email:', error));
     },
 
+    decodeBase64Url(data) {
+      return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+    },
 
     getEmailBody(payload) {
       if (payload.parts) {
-        const part = payload.parts.find((part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain');
+        const part = payload.parts.find(
+          (part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain'
+        );
         if (part && part.body && part.body.data) {
-          return atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+          return this.decodeBase64Url(part.body.data);
         }
       } else if (payload.body && payload.body.data) {
-        return atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        return this.decodeBase64Url(payload.body.data);
       }
       return 'No body content available.';
     },
@@ -300,13 +289,14 @@ export default {
     },
 
     formatDate(date) {
-      const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      const options = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      };
       return new Date(date).toLocaleDateString(undefined, options);
-    },
-
-    truncateSnippet(snippet) {
-      const maxLength = 100;
-      return snippet.length > maxLength ? `${snippet.substring(0, maxLength)}...` : snippet;
     },
 
     handleError(message) {
@@ -327,12 +317,10 @@ export default {
     nextPageDisabled() {
       return !this.nextPageToken || this.currentPage * this.emailsPerPage >= this.emails.length;
     },
-
   },
 };
-
-
 </script>
+
 <style scoped>
 /* Existing styles */
 .loading-spinner,
