@@ -45,58 +45,20 @@
     </div>
   </div>
 
-  <!-- Modal Toggle Button (For testing purposes) -->
-  <button data-modal-target="email-modal" data-modal-toggle="email-modal" class="hidden"></button>
+  <!--  modal code in the component -->
+  <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
 
-  <!-- Tailwind Modal Structure for Email Details -->
-  <div v-if="selectedEmail" id="email-modal" tabindex="-1"
-    class="fixed inset-0 z-50 justify-center items-center w-full h-full bg-black bg-opacity-50 overflow-y-auto">
-    <div class="relative p-4 w-full max-w-2xl max-h-full mx-auto">
-      <!-- Modal Content -->
-      <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
-        <!-- Modal Header -->
-        <div class="flex items-center justify-between p-4 md:p-5 border-b dark:border-gray-600">
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ selectedEmail?.subject || 'No Subject' }}
-          </h3>
-          <button @click="closeEmailModal"
-            class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1.5 dark:hover:bg-gray-600 dark:hover:text-white">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-            <span class="sr-only">Close modal</span>
-          </button>
-        </div>
-        <!-- Modal Body -->
-        <div class="p-4 space-y-4 md:p-5">
-          <p><strong>From:</strong> {{ selectedEmail?.from || 'Unknown Sender' }}</p>
-          <p><strong>Date:</strong> {{ formatDate(selectedEmail?.date) || 'Unknown Date' }}</p>
-          <div v-if="selectedEmail.body" class="text-gray-800 dark:text-gray-200"
-            v-html="sanitizeEmailBody(selectedEmail.body)"></div>
-        </div>
-        <!-- Modal Footer with Close and Analyze buttons -->
-        <div class="flex items-center justify-end p-4 md:p-5 border-t dark:border-gray-600">
-          <!-- Close Button -->
-          <button @click="closeEmailModal"
-            class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-            Close
-          </button>
-
-          <!-- Analyze Button -->
-          <button @click="analyzeEmail"
-            class="ml-2 text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg px-5 py-2.5 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
-            Analyze
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
 </template>
 
 
 <script>
+import EmailModal from '@/views/EmailModal.vue';
+import DOMPurify from 'dompurify';
+
 export default {
+  components: {
+    EmailModal,
+  },
   data() {
     return {
       emails: [],
@@ -118,53 +80,64 @@ export default {
   },
 
   methods: {
-    openEmailModal(email) {
-      this.selectedEmail = email;
-      document.querySelector("[data-modal-toggle='email-modal']").click(); // Trigger the modal to open
-    },
     closeEmailModal() {
       this.selectedEmail = null;
     },
     async analyzeEmail() {
+
+      console.log('API Token:', process.env.API_TOKEN); // Add this line before making the API request
+
       if (!this.selectedEmail) {
         console.error("No email selected for analysis.");
+        alert("Please select an email to analyze.");
         return;
       }
 
       const emailSnippet = this.selectedEmail.body || 'No Snippet';
+      console.log('Email snippet:', emailSnippet);
 
-      if (emailSnippet.length < 300) {
-        console.error("The text is too short to analyze reliably.");
+      // Validate the text length (10 to 300 words)
+      const wordCount = emailSnippet.trim().split(/\s+/).length;
+      console.log(`Word count: ${wordCount}`);
+
+      if (wordCount < 10 || wordCount > 300) {
+        console.error("The text must be between 10 and 300 words.");
+        alert("The email content must be between 10 and 300 words to analyze.");
         return;
       }
 
       try {
-        const response = await fetch('http://localhost:3001/api/analyze', {  // Use the absolute URL for your backend
+        const response = await fetch('http://localhost:3001/api/analyze', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            text: emailSnippet,
-          })
+          body: JSON.stringify({ text: emailSnippet })
         });
 
         if (!response.ok) {
-          throw new Error(`Error: ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('Response Error Text:', errorText);
+          throw new Error(`Error: ${response.statusText} - ${errorText}`);
         }
 
         const result = await response.json();
         console.log("AI Detection Result:", result);
-        alert(`Human Score: ${result.score}. This email is ${result.score}% likely to be written by a human.`);
+
+        if (result.score !== undefined) {
+          alert(`Human Score: ${result.score}%. This email is ${result.score}% likely to be written by a human.`);
+        } else if (result.error) {
+          console.error("API Error:", result.error);
+          alert(`Error analyzing content: ${result.error}`);
+        } else {
+          alert("An unknown error occurred.");
+        }
       } catch (error) {
         console.error("Failed to analyze email:", error);
+        alert(`Failed to analyze email: ${error.message}`);
       }
     }
-    ,
-    sanitizeEmailBody(body) {
-      return DOMPurify.sanitize(body, { USE_PROFILES: { html: true } });
-    },
-    logout() {
+    , logout() {
       chrome.identity.getAuthToken({ interactive: false }, (token) => {
         if (token) {
           chrome.identity.removeCachedAuthToken({ token }, () => {
@@ -380,7 +353,6 @@ export default {
     openEmailModal(email) {
       this.selectedEmail = email;
     },
-
     closeEmailModal() {
       this.selectedEmail = null;
     },
@@ -390,6 +362,7 @@ export default {
     nextPageDisabled() {
       return !this.nextPageToken || this.currentPage * this.emailsPerPage >= this.emails.length;
     },
+
   },
 };
 
@@ -433,51 +406,6 @@ export default {
   display: flex;
   justify-content: space-between;
   width: 100%;
-}
-
-.email-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow-y: auto;
-  /* Allow scrolling for long content */
-}
-
-.modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  /* Set max height for modal */
-  overflow-y: auto;
-  /* Make modal content scrollable */
-  position: relative;
-  /* Ensure the close button is positioned relative to the modal */
-}
-
-.email-body-content {
-  white-space: pre-wrap;
-  /* Preserve formatting for plain text emails */
-  overflow-wrap: break-word;
-  /* Break long words */
-}
-
-.close-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
 }
 
 /* New styles for the login button */

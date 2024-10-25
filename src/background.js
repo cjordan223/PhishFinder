@@ -100,15 +100,19 @@ function extractEmailBody(payload) {
   return body || 'No body content available';
 }
 
-
-
-// Basic phishing detection logic (customize as needed)
+// Basic phishing detection logic  
 function emailIsSuspicious(email) {
   const phishingKeywords = ['urgent', 'password', 'suspicious', 'reset', 'verify'];
-  return phishingKeywords.some(keyword => email.subject && email.subject.toLowerCase().includes(keyword));
+  const isPhishing = phishingKeywords.some(keyword => email.subject && email.subject.toLowerCase().includes(keyword));
+  
+  // Check if the sender's email domain is @gmail.com
+  const isGmailSender = email.from && email.from.toLowerCase().includes('@gmail.com');
+  
+  // Add a flag property to the email object
+  email.isFlagged = isPhishing || isGmailSender;
+  
+  return email.isFlagged;
 }
-
-
 
 // Helper function to parse a header value from email headers
 function parseHeader(headers, name) {
