@@ -4,11 +4,12 @@
             <!-- Logo and Text Section -->
             <div class="flex items-center">
                 <!-- Enlarged Logo Image -->
-                <img class="h-20 w-auto mr-4" src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo" />
+                <img class="h-24 w-24 mr-6 rounded-full border-4 border-white shadow-lg"
+                    src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo" />
                 <!-- Title and Tagline -->
                 <div class="text-white">
-                    <h1 class="text-2xl font-bold">Phish Finder</h1>
-                    <p class="text-sm">Stay Safe, Stay Aware</p>
+                    <h1 class="title text-2xl font-bold">PhishFinder</h1>
+                    <p class="text-sm">Stay Safe,Stay Aware</p>
                 </div>
             </div>
 
@@ -51,5 +52,21 @@ export default {
 </script>
 
 <style scoped>
+.title {
+    font-family: 'Space Mono', monospace;
+    font-size: 2rem;
+    /* Increase font size for h1 */
+}
+
+p {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.25rem;
+    /* Increase font size for p */
+}
+
+a {
+    font-family: 'Space Mono', monospace;
+}
+
 /* Additional styles if needed */
 </style>
