@@ -1,43 +1,41 @@
 {
-    "manifest_version": 3,
-    "name": "PhishFinder",
-    "version": "2.0",
-    "description": "Chrome extension built with Vue.js to read user emails using OAuth.",
-    "permissions": [
-      "identity",
-      "identity.email",
-      "alarms",
-      "storage",
-      "http://localhost:3001/*",   
-      "notifications",
-      "https://www.googleapis.com/"
-    ],
-    "background": {
-      "service_worker": "background.js",
-        "type": "module"
+  "manifest_version": 3,
+  "name": "PhishFinder",
+  "version": "2.0",
+  "description": "Chrome extension built with Vue.js to read user emails using OAuth.",
+  "permissions": [
+    "identity",
+    "identity.email",
+    "alarms",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:3001/*",
+    "https://*.googleapis.com/*",
+    "https://mail.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "images/icon16s.png",
+      "48": "images/icon48s.png",
+      "128": "images/icon128s.png"
     },
-    "action": {
-      "default_popup": "index.html",
-      "default_icon": {
-        "16": "images/icon16s.png",
-        "48": "images/icon48s.png",
-        "128": "images/icon128s.png"
-      },
-      "default_title": "Vue Email Reader"
-    },
-    "oauth2": {
-      "client_id": "528556636582-stsd1jf2ev9h5jg1evq8fbn0gdq7hfid.apps.googleusercontent.com",
-      "scopes": [
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/gmail.readonly"
-      ]
-    },
-    "host_permissions": [
-      "https://*.googleapis.com/*",
-      "https://mail.google.com/*"
-    ],
-      "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'"
-    }
+    "default_title": "Vue Email Reader"
+  },
+  "oauth2": {
+    "client_id": "528556636582-stsd1jf2ev9h5jg1evq8fbn0gdq7hfid.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
-  
+}

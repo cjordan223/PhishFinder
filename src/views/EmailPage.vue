@@ -1,15 +1,19 @@
+<!-- src/EmailPage.vue-->
 <template>
+  <Header @logout="logout" />
   <div class="max-w-4xl mx-auto p-4">
-    <div class="flex items-center justify-between bg-blue-500 text-white p-4 rounded-md mb-4">
-      <h1 class="text-xl font-bold">Phish Finder</h1>
-      <button @click="logout" class="bg-red-500 py-2 px-4 rounded-lg hover:bg-red-600">Logout</button>
-    </div>
+    <!-- Include the Header component -->
+
 
     <!-- Loading Spinner -->
     <div v-if="loading" class="text-center text-blue-500">Loading...</div>
 
     <!-- Error Message -->
     <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
+
+    <!-- Pagination Controls -->
+    <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
+      @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
 
     <!-- Email List -->
     <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
@@ -29,9 +33,7 @@
       </li>
     </ul>
 
-    <!-- Pagination Controls -->
-    <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
-      @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
+
   </div>
 
   <!-- Modal code in the component -->
@@ -39,12 +41,14 @@
 </template>
 
 <script>
+import Header from './Header.vue';
 import EmailModal from '@/views/EmailModal.vue';
 import PaginationControls from './PaginationControls.vue';
-import { emailIsSuspicious } from '@/utils/utils';
+import { SuspiciousWords } from '@/utils/utils';
 
 export default {
   components: {
+    Header,
     EmailModal,
     PaginationControls,
   },
@@ -70,23 +74,6 @@ export default {
     this.fetchEmails();
   },
   methods: {
-    logout() {
-      chrome.identity.getAuthToken({ interactive: false }, (token) => {
-        if (token) {
-          chrome.identity.removeCachedAuthToken({ token }, () => {
-            chrome.storage.local.set({ loggedOut: true }, () => {
-              console.log('Logged out, redirecting to login page');
-              this.$router.replace('/login');
-            });
-          });
-        } else {
-          chrome.storage.local.set({ loggedOut: true }, () => {
-            console.log('No token found, redirecting to login');
-            this.$router.replace('/login');
-          });
-        }
-      });
-    },
 
     fetchEmails(pageToken = null, isBackground = false) {
       if (!pageToken && this.emails.length > 0 && !isBackground) {
@@ -172,10 +159,9 @@ export default {
     },
 
     analyzeEmails(emails) {
-      emails.forEach(email => {
+      emails.forEach((email) => {
         if (email.isFlagged === undefined) {
-          email.isFlagged = emailIsSuspicious(email);
-          console.log('Email analyzed on page:', email.subject, '| isFlagged:', email.isFlagged);
+          email.isFlagged = SuspiciousWords(email);
         }
       });
     },
@@ -224,22 +210,58 @@ export default {
     },
 
     decodeBase64Url(data) {
-      return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+      // Replace URL-safe characters with standard Base64 characters
+      data = data.replace(/-/g, '+').replace(/_/g, '/');
+
+      // Pad with '=' characters if necessary
+      while (data.length % 4) {
+        data += '=';
+      }
+
+      try {
+        // Decode Base64 string
+        const decodedData = atob(data);
+
+        // Handle multibyte Unicode characters
+        const text = decodeURIComponent(escape(decodedData));
+        return text;
+      } catch (e) {
+        console.error('Failed to decode base64url data', e);
+        return '';
+      }
     },
 
     getEmailBody(payload) {
-      if (payload.parts) {
-        const part = payload.parts.find(
-          (part) => part.mimeType === 'text/html' || part.mimeType === 'text/plain'
-        );
-        if (part && part.body && part.body.data) {
-          return this.decodeBase64Url(part.body.data);
+      let body = '';
+
+      const getBody = (parts) => {
+        for (const part of parts) {
+          if (part.mimeType === 'text/html' && part.body && part.body.data) {
+            // Prefer HTML content
+            body = this.decodeBase64Url(part.body.data);
+            return true; // Stop once we have HTML content
+          } else if (part.parts) {
+            // Recursive call for nested parts
+            if (getBody(part.parts)) {
+              return true; // Stop if HTML content is found
+            }
+          } else if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+            // Only use plain text if HTML is not found
+            body = this.decodeBase64Url(part.body.data);
+          }
         }
+        return false;
+      };
+
+      if (payload.parts) {
+        getBody(payload.parts);
       } else if (payload.body && payload.body.data) {
-        return this.decodeBase64Url(payload.body.data);
+        body = this.decodeBase64Url(payload.body.data);
       }
-      return 'No body content available.';
+
+      return body || 'No body content available.';
     },
+
 
     sanitizeEmailBody(body) {
       return body.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/&nbsp;/g, ' ');
@@ -263,11 +285,15 @@ export default {
     },
 
     nextPage() {
-      if (this.currentPage * this.emailsPerPage < this.emails.length) {
-        this.currentPage++;
-        this.paginateEmails();
-      } else if (this.nextPageToken && typeof this.nextPageToken === 'string') {
-        this.fetchEmails(this.nextPageToken);
+      if (!this.nextPageDisabled) {
+        if (this.currentPage * this.emailsPerPage < this.emails.length) {
+          // Just move to the next page if emails are already available
+          this.currentPage++;
+          this.paginateEmails();
+        } else if (this.nextPageToken) {
+          // If more emails are available from the backend, fetch more
+          this.fetchEmails(this.nextPageToken);
+        }
       }
     },
 
@@ -311,11 +337,20 @@ export default {
     closeEmailModal() {
       this.selectedEmail = null;
     },
+    logout() {
+      chrome.storage.local.set({ loggedOut: true }, () => {
+        this.$router.push('/login');
+      });
+    },
   },
 
   computed: {
     nextPageDisabled() {
-      return !this.nextPageToken || this.currentPage * this.emailsPerPage >= this.emails.length;
+      // Check if we have more pages based on total emails and emails per page
+      return (
+        this.currentPage * this.emailsPerPage >= this.emails.length &&
+        !this.nextPageToken
+      );
     },
   },
 };
