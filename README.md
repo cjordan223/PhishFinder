@@ -44,5 +44,6 @@ npm run build
      npm run build
      ```
    - Refresh extension
+     
      ![image](https://github.com/user-attachments/assets/1c7db707-2240-4f38-9c76-a9e740567cca)
 
