@@ -21,23 +21,15 @@ npm run build
 
 ### Key Files and Directories
 
-- **index.html**: The main HTML file for the Vue.js application.
-- **package.json**: Contains project metadata and dependencies.
-- **postcss.config.js**: Configuration for PostCSS.
-- **public/**: Contains static assets like images and the manifest file for the Chrome extension.
-- **server/**: Contains the backend server code.
-  - **server.js**: The main server file.
-  - **.env**: Environment variables for the server.
-- **src/**: Contains the source code for the Vue.js application.
-  - **App.vue**: The root Vue component.
-  - **assets/**: Contains CSS files.
-  - **background.js**: The background script for the Chrome extension.
-  - **main.js**: The entry point for the Vue.js application.
-  - **router/**: Contains the Vue Router configuration.
-  - **utils/**: Contains utility functions.
+ - **public/**: Contains static assets like images and the manifest file for the Chrome extension.
+- **server/**: Contains the backend server code. 
+  - **server.js**: The main server file. Need to start server for API's to work.
+ - **src/**: code for the Vue.js application.
+   - **background.js**: The background script (service worker) for the Chrome extension.
+   - **router/**: Contains the Vue Router configuration.
+  - **utils/**: Contains utility functions for service worker.
   - **views/**: Contains Vue components for different views/pages.
-- **tailwind.config.js**: Configuration for Tailwind CSS.
-- **vite.config.js**: Configuration for Vite, the build tool.
+ - **vite.config.js**: Configuration for Vite, the build tool.
 
 4. **Load the extension in Chrome:**
    - Open Chrome's Extensions Manager.
