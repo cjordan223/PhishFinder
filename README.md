@@ -43,5 +43,6 @@ npm run build
      ```bash
      npm run build
      ```
-   - Once the build completes, reload the **dist** folder in the Extensions Manager to see chnages. (idk if this is needed)
+   - Refresh extension
+     ![image](https://github.com/user-attachments/assets/1c7db707-2240-4f38-9c76-a9e740567cca)
 
