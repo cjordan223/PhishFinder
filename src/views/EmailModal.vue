@@ -4,14 +4,13 @@
         class="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50 overflow-y-auto">
         <div class="relative p-4 w-full max-w-2xl max-h-full mx-auto">
             <!-- Modal Content -->
-            <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <div class="relative bg-white rounded-lg shadow">
                 <!-- Modal Header -->
-                <div class="flex items-center justify-between p-4 md:p-5 border-b dark:border-gray-600">
-                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                <div class="flex items-center justify-between p-4 md:p-5 border-b">
+                    <h3 class="text-xl font-semibold">
                         {{ email.subject || 'No Subject' }}
                     </h3>
-                    <button @click="close"
-                        class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1.5 dark:hover:bg-gray-600 dark:hover:text-white">
+                    <button @click="close" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1.5">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M6 18L18 6M6 6l12 12"></path>
@@ -24,8 +23,7 @@
                     <p><strong>From:</strong> {{ email.from || 'Unknown Sender' }}</p>
                     <p><strong>Date:</strong> {{ formatDate(email.date) || 'Unknown Date' }}</p>
                     <!-- Display the sanitized email body -->
-                    <div class="text-gray-800 dark:text-gray-200 email-body-content"
-                        v-html="sanitizeEmailBody(email.body)">
+                    <div class="email-body-content" v-html="sanitizeEmailBody(email.body)">
                     </div>
                 </div>
                 <!-- Modal Footer -->
@@ -154,7 +152,7 @@ export default {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(87, 93, 106, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -163,7 +161,8 @@ export default {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: #e0f7fa;
+    /* Change this to your desired color */
     padding: 20px;
     border-radius: 5px;
     width: 90%;
