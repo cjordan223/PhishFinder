@@ -1,6 +1,9 @@
 # Phish-Finder 2.0
 
- 
+## Project Overview
+
+PhishFinder is a Chrome extension built with Vue.js that reads user emails using OAuth. The project is structured to include both the frontend Vue.js application and the backend server.
+
 ## Installation and Setup
 
 ```
@@ -8,7 +11,6 @@ git clone https://github.com/cjordan223/PhishFinder
 cd PhishFinder
 npm install
 npm run build
-
 ```
 
 1. **Load the Extension:**
@@ -16,11 +18,6 @@ npm run build
    - Select the **dist** folder after clicking **Load Unpacked**.
    - Pin the extension, click login with google and follow the OAuth steps
   
-
-## Project Overview
-
-PhishFinder is a Chrome extension built with Vue.js that reads user emails using OAuth. The project is structured to include both the frontend Vue.js application and the backend server.
-
 
 ### Key Files and Directories
 
