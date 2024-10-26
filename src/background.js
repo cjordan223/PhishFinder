@@ -1,12 +1,5 @@
-import { SuspiciousWords, parseHeader } from './utils/utils.js';
-
-//src/background.js
-
-
-// Function to fetch and analyze emails
-// src/background.js
-
-// Function to fetch and analyze emails
+import { SuspiciousWords, parseHeader, analyzeEmailContent } from './utils/utils.js';
+// Fetch and analyze emails
 function fetchAndAnalyzeEmails() {
   console.log('fetchAndAnalyzeEmails called');
   chrome.identity.getAuthToken({ interactive: false }, async (token) => {
@@ -46,21 +39,12 @@ async function analyzeEmails(emails) {
   const flaggedEmails = [];
 
   for (const email of emails) {
-    // Perform local keyword analysis
-    const isFlaggedLocally = SuspiciousWords(email);
-    
-    // Send content to backend for analysis
-    const isFlaggedByBackend = await sendToBackendForAnalysis(email.body);
+    const analyzedEmail = await analyzeEmailContent(email, sendToBackendForAnalysis);
 
-    // If either the local or backend analysis flags the email, mark it as flagged
-    const isFlagged = isFlaggedLocally || isFlaggedByBackend;
-    email.isFlagged = isFlagged; // Update the email object with flag status
+    console.log('Analyzed email:', analyzedEmail.subject, '| isFlagged:', analyzedEmail.isFlagged, '| Link Risks:', analyzedEmail.linkRisks);
 
-    console.log('Analyzed email:', email.subject, '| isFlagged:', isFlagged);
-
-    if (isFlagged) {
-      console.log('Suspicious email detected:', email);
-      flaggedEmails.push(email); // Add flagged email to the list
+    if (analyzedEmail.isFlagged) {
+      flaggedEmails.push(analyzedEmail);
     }
   }
 
@@ -71,8 +55,29 @@ async function analyzeEmails(emails) {
   }
 }
 
+// Analyze links for text/URL mismatches and other risks
+function linkAnalysis(emailBody) {
+  const risks = [];
+  const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+/g;
+  const links = emailBody.match(urlPattern) || [];
 
-// Function to send email content to the backend for analysis
+  links.forEach(link => {
+    // Check for URL/text mismatch
+    const displayTextMatch = new RegExp(`<a[^>]+>${link}</a>`).exec(emailBody);
+    if (displayTextMatch && !displayTextMatch[0].includes(link)) {
+      risks.push(`Mismatched link display text: ${link}`);
+    }
+
+    // Check for IP-based URLs
+    if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(link)) {
+      risks.push(`IP address URL detected: ${link}`);
+    }
+  });
+
+  return risks;
+}
+
+// Send email content to the backend for analysis
 async function sendToBackendForAnalysis(text) {
   try {
     const response = await fetch('http://localhost:3001/api/analyze', {
@@ -91,8 +96,7 @@ async function sendToBackendForAnalysis(text) {
   }
 }
 
-
-// Helper to fetch email details
+// Fetch email details
 function fetchEmailDetails(token, messageId) {
   const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
 
@@ -116,7 +120,7 @@ function fetchEmailDetails(token, messageId) {
     .catch(error => console.error('Error fetching email details:', error));
 }
 
-// Function to extract email body from Gmail API response
+// Extract email body from Gmail API response
 function extractEmailBody(payload) {
   let body = '';
   if (payload.parts) {
@@ -130,8 +134,7 @@ function extractEmailBody(payload) {
   return body || 'No body content available';
 }
 
-
-// Event Listeners
+// EVENT LISTENERS
 
 // On extension installation
 chrome.runtime.onInstalled.addListener(() => {
@@ -140,7 +143,6 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.remove(['flaggedEmails'], () => {
     console.log('Cleared flagged emails cache');
   });
-  // Fetch and analyze emails immediately
   fetchAndAnalyzeEmails();
 });
 
@@ -154,12 +156,9 @@ chrome.runtime.onStartup.addListener(() => {
 // Create an alarm to fetch emails periodically (every 5 minutes)
 chrome.alarms.create('checkEmails', { periodInMinutes: 5 });
 
-// Set an event listener for the alarm
 chrome.alarms.onAlarm.addListener((alarm) => {
   console.log('Alarm triggered:', alarm.name);
   if (alarm.name === 'checkEmails') {
-    fetchAndAnalyzeEmails(); // Trigger email fetching and analysis
+    fetchAndAnalyzeEmails(); 
   }
 });
-
-

@@ -27,7 +27,7 @@
                     </div>
                 </div>
                 <!-- Modal Footer -->
-                <div class="flex items-center justify-end p-4 md:p-5 border-t dark:border-gray-600">
+                <div class="flex items-center justify-end p-4 md:p-5 border-t">
                     <button @click="close"
                         class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg px-5 py-2.5">
                         Close
@@ -37,19 +37,20 @@
                         Analyze
                     </button>
                     <button @click="testSafeBrowsing"
-                        class="ml-2 text-white bg-purple-700 hover:bg-green-800 font-medium rounded-lg px-5 py-2.5">Test
+                        class="ml-2 text-white bg-purple-700 hover:bg-purple-800 font-medium rounded-lg px-5 py-2.5">Test
                         Safe Browsing API</button>
-
+                    <button @click="checkLinks"
+                        class="ml-2 text-white bg-orange-700 hover:bg-orange-800 font-medium rounded-lg px-5 py-2.5">Check
+                        Links</button>
                 </div>
             </div>
         </div>
     </div>
 </template>
 
-
-
 <script>
 import DOMPurify from 'dompurify';
+import { linkAnalysis, analyzeEmailContent, extractUrlsFromEmail } from '@/utils/utils.js';
 
 export default {
     name: 'EmailModal',
@@ -77,36 +78,19 @@ export default {
         async analyzeEmail() {
             console.log('API Token:', process.env.API_TOKEN); // Debugging purpose
 
-            const emailContent = this.email.body || 'No Content';
-
-            if (emailContent.length < 300) {
-                alert('The email content is too short to analyze reliably.');
-                return;
-            }
-
             try {
-                const response = await fetch('http://localhost:3001/api/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: emailContent }),
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Error: ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                console.log('AI Detection Result:', result);
-                alert(`Human Score: ${result.score}%. This email is ${result.score}% likely to be written by a human.`);
+                const analyzedEmail = await analyzeEmailContent(this.email, this.sendToBackendForAnalysis);
+                const message = analyzedEmail.isFlagged
+                    ? `Suspicious content found. Risks: ${analyzedEmail.linkRisks.join(', ')}`
+                    : 'No suspicious content found.';
+                alert(message);
             } catch (error) {
                 console.error('Failed to analyze email:', error);
                 alert('An error occurred while analyzing the email.');
             }
         },
         async testSafeBrowsing() {
-            const urls = this.extractUrlsFromEmail(this.email.body);
+            const urls = extractUrlsFromEmail(this.email.body);
             if (urls.length === 0) {
                 alert('No URLs found in the email.');
                 return;
@@ -122,8 +106,6 @@ export default {
                 });
 
                 const result = await response.json();
-
-                // Check if the backend flagged URLs as suspicious
                 if (result.flaggedUrls && result.flaggedUrls.length > 0) {
                     const flaggedUrls = result.flaggedUrls.map(entry => entry.url); // Extract URLs only
                     alert('Suspicious URLs detected: ' + flaggedUrls.join(', '));
@@ -135,13 +117,29 @@ export default {
                 alert('An error occurred while testing the Safe Browsing API.');
             }
         },
-
-        extractUrlsFromEmail(emailContent) {
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            return emailContent.match(urlRegex) || [];
+        async checkLinks() {
+            const linkRisks = linkAnalysis(this.email.body);
+            if (linkRisks.length > 0) {
+                alert('Link Risks Detected:\n' + linkRisks.join('\n'));
+            } else {
+                alert('No link-related risks detected.');
+            }
+        },
+        async sendToBackendForAnalysis(text) {
+            try {
+                const response = await fetch('http://localhost:3001/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                const result = await response.json();
+                return result.isSuspicious || false;
+            } catch (error) {
+                console.error('Error calling backend API:', error);
+                return false;
+            }
         }
-
-    },
+    }
 };
 </script>
 
@@ -157,38 +155,21 @@ export default {
     justify-content: center;
     align-items: center;
     overflow-y: auto;
-    /* Allow scrolling for long content */
 }
 
 .modal-content {
     background-color: #e0f7fa;
-    /* Change this to your desired color */
     padding: 20px;
     border-radius: 5px;
     width: 90%;
     max-width: 500px;
     max-height: 80vh;
-    /* Set max height for modal */
     overflow-y: auto;
-    /* Make modal content scrollable */
     position: relative;
-    /* Ensure the close button is positioned relative to the modal */
 }
 
 .email-body-content {
     white-space: pre-wrap;
-    /* Preserve formatting for plain text emails */
     overflow-wrap: break-word;
-    /* Break long words */
-}
-
-.close-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
 }
 </style>
