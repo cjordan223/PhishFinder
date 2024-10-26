@@ -1,3 +1,5 @@
+<!--PaginationControls.vue-->
+<!-- logic stays in EmailPage, this is a 'dumb' component-->
 <template>
     <div class="flex justify-between mt-6">
         <button @click.prevent="prevPage" :disabled="currentPage === 1"

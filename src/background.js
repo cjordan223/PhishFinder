@@ -1,10 +1,15 @@
-import { emailIsSuspicious, parseHeader } from './utils/utils.js';
+import { SuspiciousWords, parseHeader } from './utils/utils.js';
 
 //src/background.js
+
+
+// Function to fetch and analyze emails
+// src/background.js
+
 // Function to fetch and analyze emails
 function fetchAndAnalyzeEmails() {
   console.log('fetchAndAnalyzeEmails called');
-  chrome.identity.getAuthToken({ interactive: false }, function(token) {
+  chrome.identity.getAuthToken({ interactive: false }, async (token) => {
     if (!token) {
       console.error('Failed to retrieve token');
       return;
@@ -13,50 +18,53 @@ function fetchAndAnalyzeEmails() {
 
     const url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&maxResults=10';
 
-    fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-,
-    })
-      .then(response => {
-        console.log('Response status:', response.status);
-        return response.json();
-      })
-      .then(async (data) => {
-        if (data.error) {
-          console.error('Error fetching email list:', data.error);
-          return;
-        }
-        console.log('Email data received:', data);
+    try {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (data.messages && data.messages.length > 0) {
-          const emailDetails = await Promise.all(data.messages.map((msg) => fetchEmailDetails(token, msg.id)));
-          analyzeEmails(emailDetails);
-        } else {
-          console.log('No emails found.');
-        }
-      })
-      .catch(error => console.error('Error fetching emails:', error));
+      const data = await response.json();
+      if (data.error) {
+        console.error('Error fetching email list:', data.error);
+        return;
+      }
+      console.log('Email data received:', data);
+
+      if (data.messages && data.messages.length > 0) {
+        const emailDetails = await Promise.all(data.messages.map((msg) => fetchEmailDetails(token, msg.id)));
+        analyzeEmails(emailDetails);
+      } else {
+        console.log('No emails found.');
+      }
+    } catch (error) {
+      console.error('Error fetching emails:', error);
+    }
   });
 }
 
-// Analyze emails and flag suspicious ones
-// background.js
-
-function analyzeEmails(emails) {
+async function analyzeEmails(emails) {
   const flaggedEmails = [];
 
-  emails.forEach(email => {
-    email.isFlagged = emailIsSuspicious(email);
-    console.log('Analyzed email:', email.subject, '| isFlagged:', email.isFlagged);
+  for (const email of emails) {
+    // Perform local keyword analysis
+    const isFlaggedLocally = SuspiciousWords(email);
+    
+    // Send content to backend for analysis
+    const isFlaggedByBackend = await sendToBackendForAnalysis(email.body);
 
-    if (email.isFlagged) {
+    // If either the local or backend analysis flags the email, mark it as flagged
+    const isFlagged = isFlaggedLocally || isFlaggedByBackend;
+    email.isFlagged = isFlagged; // Update the email object with flag status
+
+    console.log('Analyzed email:', email.subject, '| isFlagged:', isFlagged);
+
+    if (isFlagged) {
       console.log('Suspicious email detected:', email);
       flaggedEmails.push(email); // Add flagged email to the list
     }
-  });
+  }
 
   if (flaggedEmails.length > 0) {
-    // Save flagged emails to Chrome storage
     chrome.storage.local.set({ flaggedEmails }, () => {
       console.log('Flagged emails saved to storage:', flaggedEmails);
     });
@@ -64,7 +72,27 @@ function analyzeEmails(emails) {
 }
 
 
-// Fetch email details
+// Function to send email content to the backend for analysis
+async function sendToBackendForAnalysis(text) {
+  try {
+    const response = await fetch('http://localhost:3001/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    const result = await response.json();
+    return result.isSuspicious || false; // Return true if flagged, false otherwise
+  } catch (error) {
+    console.error('Error calling backend API:', error);
+    return false;
+  }
+}
+
+
+// Helper to fetch email details
 function fetchEmailDetails(token, messageId) {
   const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
 
@@ -73,9 +101,7 @@ function fetchEmailDetails(token, messageId) {
   })
     .then(response => response.json())
     .then(email => {
-      if (!email.payload || !email.payload.headers) {
-        return null;
-      }
+      if (!email.payload?.headers) return null;
 
       const body = extractEmailBody(email.payload);
       return {
@@ -90,7 +116,7 @@ function fetchEmailDetails(token, messageId) {
     .catch(error => console.error('Error fetching email details:', error));
 }
 
-// Helper function to extract email body
+// Function to extract email body from Gmail API response
 function extractEmailBody(payload) {
   let body = '';
   if (payload.parts) {
@@ -103,6 +129,7 @@ function extractEmailBody(payload) {
   }
   return body || 'No body content available';
 }
+
 
 // Event Listeners
 
@@ -134,3 +161,5 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     fetchAndAnalyzeEmails(); // Trigger email fetching and analysis
   }
 });
+
+
