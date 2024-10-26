@@ -120,14 +120,15 @@ export default {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ text: this.email.body }), // Send `text` instead of `urls`
+                    body: JSON.stringify({ text: this.email.body }),
                 });
 
                 const result = await response.json();
 
                 // Check if the backend flagged URLs as suspicious
                 if (result.flaggedUrls && result.flaggedUrls.length > 0) {
-                    alert('Suspicious URLs detected: ' + result.flaggedUrls.join(', '));
+                    const flaggedUrls = result.flaggedUrls.map(entry => entry.url); // Extract URLs only
+                    alert('Suspicious URLs detected: ' + flaggedUrls.join(', '));
                 } else {
                     alert('No suspicious URLs detected.');
                 }
@@ -136,6 +137,7 @@ export default {
                 alert('An error occurred while testing the Safe Browsing API.');
             }
         },
+
         extractUrlsFromEmail(emailContent) {
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             return emailContent.match(urlRegex) || [];

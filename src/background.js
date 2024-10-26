@@ -42,12 +42,20 @@ function fetchAndAnalyzeEmails() {
   });
 }
 
-// Analyze emails by sending content to backend API
 async function analyzeEmails(emails) {
   const flaggedEmails = [];
 
   for (const email of emails) {
-    const isFlagged = await sendToBackendForAnalysis(email.body);
+    // Perform local keyword analysis
+    const isFlaggedLocally = SuspiciousWords(email);
+    
+    // Send content to backend for analysis
+    const isFlaggedByBackend = await sendToBackendForAnalysis(email.body);
+
+    // If either the local or backend analysis flags the email, mark it as flagged
+    const isFlagged = isFlaggedLocally || isFlaggedByBackend;
+    email.isFlagged = isFlagged; // Update the email object with flag status
+
     console.log('Analyzed email:', email.subject, '| isFlagged:', isFlagged);
 
     if (isFlagged) {
@@ -63,6 +71,7 @@ async function analyzeEmails(emails) {
   }
 }
 
+
 // Function to send email content to the backend for analysis
 async function sendToBackendForAnalysis(text) {
   try {
@@ -75,12 +84,13 @@ async function sendToBackendForAnalysis(text) {
     });
 
     const result = await response.json();
-    return result.isSuspicious;
+    return result.isSuspicious || false; // Return true if flagged, false otherwise
   } catch (error) {
     console.error('Error calling backend API:', error);
     return false;
   }
 }
+
 
 // Helper to fetch email details
 function fetchEmailDetails(token, messageId) {
