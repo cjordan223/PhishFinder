@@ -1,4 +1,4 @@
-# Phish-Finder-Frontend
+# PhishFinder-Frontend
 
 ## Project Overview
 
