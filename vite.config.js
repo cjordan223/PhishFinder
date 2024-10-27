@@ -1,10 +1,9 @@
-import { defineConfig } from 'vite';  // Ensure this import is correct
+import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 
-// Ensure you're using defineConfig here
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -31,6 +30,22 @@ export default defineConfig({
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
       },
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    },
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
     },
   },
 });
