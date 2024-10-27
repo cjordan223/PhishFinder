@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-PhishFinder is a Chrome extension built with Vue.js that reads user emails using OAuth. The project is structured to include both the frontend Vue.js application and the backend server.
+PhishFinder is a Chrome extension built with Vue.js that reads user emails using OAuth. This is the frontend Vue.js application only.
 
 ## Installation and Setup
 
@@ -22,9 +22,7 @@ npm run build
 ### Key Files and Directories
 
  - **public/**: Contains static assets like images and the manifest file for the Chrome extension.
-- **server/**: Contains the backend server code. 
-  - **server.js**: The main server file. Need to start server for API's to work.
- - **src/**: code for the Vue.js application.
+  - **src/**: code for the Vue.js application.
    - **background.js**: The background script (service worker) for the Chrome extension.
    - **router/**: Contains the Vue Router configuration.
   - **utils/**: Contains utility functions for service worker.
