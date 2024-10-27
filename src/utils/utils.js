@@ -40,7 +40,7 @@ export function linkAnalysis(emailBody) {
 
     
     // If the display text looks like a URL but doesn't match the actual URL
-    //THIS WORK BUT....it is simple and needs more refinement. google.com linking to https://msn.com will not get caught, only https:// links
+    //THIS WORKS BUT....it is simple and needs more refinement. google.com linking to https://msn.com will not get caught, only https:// links
 
     if (displayText.match(/https?:\/\/|www\./) && !displayText.includes(actualUrl)) {
       risks.push(`Mismatched link: display text "${displayText}" does not match URL "${actualUrl}"`);

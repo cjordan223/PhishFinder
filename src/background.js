@@ -80,7 +80,7 @@ function linkAnalysis(emailBody) {
 // Send email content to the backend for analysis
 async function sendToBackendForAnalysis(text) {
   try {
-    const response = await fetch('http://localhost:3001/api/analyze', {
+    const response = await fetch('http://localhost:3000/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

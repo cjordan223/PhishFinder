@@ -1,4 +1,3 @@
-<!-- EmailModal.vue -->
 <template>
     <div v-if="email"
         class="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50 overflow-y-auto">
@@ -32,16 +31,18 @@
                         class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg px-5 py-2.5">
                         Close
                     </button>
-                    <button @click="analyzeEmail"
+                    <button @click="AICheck"
                         class="ml-2 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg px-5 py-2.5">
-                        Analyze
+                        Analyze for AI
+                    </button>
+                    <button @click="analyzeEmail"
+                        class="ml-2 text-white bg-indigo-700 hover:bg-indigo-800 font-medium rounded-lg px-5 py-2.5">
+                        Mismatched Domains / IP's
                     </button>
                     <button @click="testSafeBrowsing"
                         class="ml-2 text-white bg-purple-700 hover:bg-purple-800 font-medium rounded-lg px-5 py-2.5">Test
                         Safe Browsing API</button>
-                    <button @click="checkLinks"
-                        class="ml-2 text-white bg-orange-700 hover:bg-orange-800 font-medium rounded-lg px-5 py-2.5">Check
-                        Links</button>
+
                 </div>
             </div>
         </div>
@@ -75,9 +76,39 @@ export default {
         sanitizeEmailBody(body) {
             return DOMPurify.sanitize(body, { USE_PROFILES: { html: true } });
         },
-        async analyzeEmail() {
+        async AICheck() {
             console.log('API Token:', process.env.API_TOKEN); // Debugging purpose
 
+            const emailContent = this.email.body || 'No Content';
+
+            if (emailContent.length < 300) {
+                alert('The email content is too short to analyze reliably.');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/api/ai-analyze', { // Updated endpoint
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: emailContent }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('AI Detection Result:', result);
+                alert(`Human Score: ${result.score}%. This email is ${result.score}% likely to be written by a human.`);
+            } catch (error) {
+                console.error('Failed to analyze email:', error);
+                alert('An error occurred while analyzing the email.');
+            }
+        },
+        async analyzeEmail() {
+            console.log('API Token:', process.env.API_TOKEN);
             try {
                 const analyzedEmail = await analyzeEmailContent(this.email, this.sendToBackendForAnalysis);
                 const message = analyzedEmail.isFlagged
@@ -97,7 +128,7 @@ export default {
             }
 
             try {
-                const response = await fetch('http://localhost:3001/api/analyze', {
+                const response = await fetch('http://localhost:3000/api/analyze', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -117,17 +148,9 @@ export default {
                 alert('An error occurred while testing the Safe Browsing API.');
             }
         },
-        async checkLinks() {
-            const linkRisks = linkAnalysis(this.email.body);
-            if (linkRisks.length > 0) {
-                alert('Link Risks Detected:\n' + linkRisks.join('\n'));
-            } else {
-                alert('No link-related risks detected.');
-            }
-        },
         async sendToBackendForAnalysis(text) {
             try {
-                const response = await fetch('http://localhost:3001/api/analyze', {
+                const response = await fetch('http://localhost:3000/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text }),
