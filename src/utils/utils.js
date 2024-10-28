@@ -2,13 +2,10 @@
 
 // Analyze if email contains suspicious words
 export function SuspiciousWords(email) {
-  const phishingKeywords = ['urgent', 'password', 'suspicious', 'reset', 'verify'];
+  const phishingKeywords = ['urgent', 'password', 'suspicious', 'reset', 'verify', 'account', 'security', 'bank'];
+  const emailText = `${email.subject || ''} ${email.snippet || ''} ${email.body || ''}`.toLowerCase();
 
-  const isPhishingInSubject = phishingKeywords.some(keyword => email.subject?.toLowerCase().includes(keyword));
-  const isPhishingInSnippet = phishingKeywords.some(keyword => email.snippet?.toLowerCase().includes(keyword));
-  const isPhishingInBody = phishingKeywords.some(keyword => email.body?.toLowerCase().includes(keyword));
-
-  const isPhishing = isPhishingInSubject || isPhishingInSnippet || isPhishingInBody;
+  const isPhishing = phishingKeywords.some(keyword => emailText.includes(keyword));
   email.isFlagged = isPhishing;
   return email.isFlagged;
 }
@@ -25,7 +22,7 @@ export function extractUrlsFromEmail(emailContent) {
   return emailContent.match(urlPattern) || [];
 }
 
-
+// Analyze links in email content for mismatched display text and detect IP-based URLs
 export function linkAnalysis(emailBody) {
   const risks = [];
   const anchorTagPattern = /<a\s+(?:[^>]*?\s+)?href=["'](https?:\/\/[^"']+)["'][^>]*>(.*?)<\/a>/gi;
@@ -34,15 +31,12 @@ export function linkAnalysis(emailBody) {
   while ((match = anchorTagPattern.exec(emailBody)) !== null) {
     const actualUrl = match[1];  // The URL in the href attribute
     const displayText = match[2]; // The text displayed in the link
-    console.log(actualUrl);
-    console.log(displayText);
 
-
-    
-    // If the display text looks like a URL but doesn't match the actual URL
-    //THIS WORKS BUT....it is simple and needs more refinement. google.com linking to https://msn.com will not get caught, only https:// links
-
-    if (displayText.match(/https?:\/\/|www\./) && !displayText.includes(actualUrl)) {
+    // Check if the display text looks like a URL but does not match the actual URL
+    if (
+      displayText.match(/https?:\/\/|www\./) && 
+      !actualUrl.includes(displayText.replace(/https?:\/\//, '').replace('www.', '').split('/')[0])
+    ) {
       risks.push(`Mismatched link: display text "${displayText}" does not match URL "${actualUrl}"`);
     }
 
@@ -62,10 +56,10 @@ export async function analyzeEmailContent(email, sendToBackendForAnalysis) {
   const linkRisks = linkAnalysis(email.body);
   const isFlaggedByLinks = linkRisks.length > 0;
 
+  // Combine flags from all sources
   const isFlagged = isFlaggedLocally || isFlaggedByBackend || isFlaggedByLinks;
   email.isFlagged = isFlagged;
   email.linkRisks = linkRisks;
 
   return email;
 }
-

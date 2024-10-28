@@ -1,4 +1,5 @@
-import { SuspiciousWords, parseHeader, analyzeEmailContent } from './utils/utils.js';
+import { parseHeader, analyzeEmailContent } from './utils/utils.js';
+
 // Fetch and analyze emails
 function fetchAndAnalyzeEmails() {
   console.log('fetchAndAnalyzeEmails called');
@@ -35,6 +36,21 @@ function fetchAndAnalyzeEmails() {
   });
 }
 
+async function analyzeDomain() {
+  try {
+      const linkRisks = linkAnalysis(this.email.body);  // Directly call linkAnalysis here
+      if (linkRisks.length > 0) {
+          alert(`Suspicious links detected: ${linkRisks.join(', ')}`);
+      } else {
+          alert('No suspicious links detected.');
+      }
+  } catch (error) {
+      console.error('Failed to analyze email links:', error);
+      alert('An error occurred while analyzing the email links.');
+  }
+}
+
+
 async function analyzeEmails(emails) {
   const flaggedEmails = [];
 
@@ -46,8 +62,23 @@ async function analyzeEmails(emails) {
     if (analyzedEmail.isFlagged) {
       flaggedEmails.push(analyzedEmail);
     }
+
+    // Prepare data for backend storage
+    const emailData = {
+      id: email.id,
+      sender: email.from,
+      subject: email.subject,
+      body: email.body,
+      extractedUrls: linkAnalysis(email.body),
+      timestamp: new Date(email.date).toISOString(),
+      safebrowsingFlag: analyzedEmail.isFlagged ? 'yes' : 'no',
+    };
+
+    // Store each analyzed email in the backend database
+    await saveEmailToBackend(emailData);
   }
 
+  // Save flagged emails to local storage
   if (flaggedEmails.length > 0) {
     chrome.storage.local.set({ flaggedEmails }, () => {
       console.log('Flagged emails saved to storage:', flaggedEmails);
@@ -57,30 +88,36 @@ async function analyzeEmails(emails) {
 
 // Analyze links for text/URL mismatches and other risks
 function linkAnalysis(emailBody) {
-  const risks = [];
   const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+/g;
-  const links = emailBody.match(urlPattern) || [];
+  return emailBody.match(urlPattern) || [];
+}
 
-  links.forEach(link => {
-    // Check for URL/text mismatch
-    const displayTextMatch = new RegExp(`<a[^>]+>${link}</a>`).exec(emailBody);
-    if (displayTextMatch && !displayTextMatch[0].includes(link)) {
-      risks.push(`Mismatched link display text: ${link}`);
+// Save email data to the backend database
+async function saveEmailToBackend(emailData) {
+  try {
+    const response = await fetch('http://localhost:8080/api/saveEmailAnalysis', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      console.log('Email analysis saved successfully:', result.id);
+    } else {
+      console.error('Failed to save email analysis:', result.error);
     }
-
-    // Check for IP-based URLs
-    if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(link)) {
-      risks.push(`IP address URL detected: ${link}`);
-    }
-  });
-
-  return risks;
+  } catch (error) {
+    console.error('Error saving email to backend:', error);
+  }
 }
 
 // Send email content to the backend for analysis
 async function sendToBackendForAnalysis(text) {
   try {
-    const response = await fetch('http://localhost:3000/api/analyze', {
+    const response = await fetch('http://localhost:8080/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -139,7 +176,6 @@ function extractEmailBody(payload) {
 // On extension installation
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
-  // Clear any existing flagged emails
   chrome.storage.local.remove(['flaggedEmails'], () => {
     console.log('Cleared flagged emails cache');
   });
@@ -149,13 +185,11 @@ chrome.runtime.onInstalled.addListener(() => {
 // On browser startup
 chrome.runtime.onStartup.addListener(() => {
   console.log('Browser started up');
-  // Fetch and analyze emails on startup
   fetchAndAnalyzeEmails();
 });
 
-// Create an alarm to fetch emails periodically (every 5 minutes)
+// Periodic alarm to check emails
 chrome.alarms.create('checkEmails', { periodInMinutes: 5 });
-
 chrome.alarms.onAlarm.addListener((alarm) => {
   console.log('Alarm triggered:', alarm.name);
   if (alarm.name === 'checkEmails') {
