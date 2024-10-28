@@ -1,4 +1,4 @@
-import { parseHeader, analyzeEmailContent } from './utils/utils.js';
+import { isEmailProcessed, markEmailAsProcessed, parseHeader, analyzeEmailContent, extractEmailBody, linkAnalysis } from './utils/utils.js';
 
 // Fetch and analyze emails
 function fetchAndAnalyzeEmails() {
@@ -36,21 +36,6 @@ function fetchAndAnalyzeEmails() {
   });
 }
 
-async function analyzeDomain() {
-  try {
-      const linkRisks = linkAnalysis(this.email.body);  // Directly call linkAnalysis here
-      if (linkRisks.length > 0) {
-          alert(`Suspicious links detected: ${linkRisks.join(', ')}`);
-      } else {
-          alert('No suspicious links detected.');
-      }
-  } catch (error) {
-      console.error('Failed to analyze email links:', error);
-      alert('An error occurred while analyzing the email links.');
-  }
-}
-
-
 async function analyzeEmails(emails) {
   const flaggedEmails = [];
 
@@ -86,26 +71,26 @@ async function analyzeEmails(emails) {
   }
 }
 
-// Analyze links for text/URL mismatches and other risks
-function linkAnalysis(emailBody) {
-  const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+/g;
-  return emailBody.match(urlPattern) || [];
-}
 
-// Save email data to the backend database
+ // Save email data to the backend only if not already processed
 async function saveEmailToBackend(emailData) {
+  const isProcessed = await isEmailProcessed(emailData.id);
+  if (isProcessed) {
+    console.log(`Email with ID ${emailData.id} is already processed. Skipping backend call.`);
+    return;
+  }
+
   try {
     const response = await fetch('http://localhost:8080/api/saveEmailAnalysis', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(emailData),
     });
 
     const result = await response.json();
     if (result.success) {
       console.log('Email analysis saved successfully:', result.id);
+      await markEmailAsProcessed(emailData.id); // Mark as processed after successful save
     } else {
       console.error('Failed to save email analysis:', result.error);
     }
@@ -157,19 +142,6 @@ function fetchEmailDetails(token, messageId) {
     .catch(error => console.error('Error fetching email details:', error));
 }
 
-// Extract email body from Gmail API response
-function extractEmailBody(payload) {
-  let body = '';
-  if (payload.parts) {
-    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
-    if (htmlPart?.body?.data) {
-      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    }
-  } else if (payload.body?.data) {
-    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-  }
-  return body || 'No body content available';
-}
 
 // EVENT LISTENERS
 

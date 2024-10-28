@@ -63,3 +63,56 @@ export async function analyzeEmailContent(email, sendToBackendForAnalysis) {
 
   return email;
 }
+
+
+// Extract email body from Gmail API response for fetchEmailDetails fxn in service worker
+export function extractEmailBody(payload) {
+  let body = '';
+  if (payload.parts) {
+    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
+    if (htmlPart?.body?.data) {
+      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    }
+  } else if (payload.body?.data) {
+    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+  }
+  return body || 'No body content available';
+}
+
+// analyze domain 
+export async function analyzeDomain() {
+  try {
+      const linkRisks = linkAnalysis(this.email.body);  // Directly call linkAnalysis here
+      if (linkRisks.length > 0) {
+          alert(`Suspicious links detected: ${linkRisks.join(', ')}`);
+      } else {
+          alert('No suspicious links detected.');
+      }
+  } catch (error) {
+      console.error('Failed to analyze email links:', error);
+      alert('An error occurred while analyzing the email links.');
+  }
+}
+
+// Check if an email ID is already processed for saveEmailToBackend fxn in service worker
+export async function isEmailProcessed(emailId) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['processedEmails'], (result) => {
+      const processedEmails = result.processedEmails || [];
+      resolve(processedEmails.includes(emailId));
+    });
+  });
+}
+
+// Mark an email ID as processed for saveEmailToBackend fxn in service worker
+export async function markEmailAsProcessed(emailId) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['processedEmails'], (result) => {
+      const processedEmails = result.processedEmails || [];
+      if (!processedEmails.includes(emailId)) {
+        processedEmails.push(emailId);
+      }
+      chrome.storage.local.set({ processedEmails }, () => resolve());
+    });
+  });
+}
