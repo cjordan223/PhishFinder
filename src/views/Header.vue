@@ -1,27 +1,36 @@
 <template>
-    <header class="bg-blue-500">
-        <div class="flex items-center justify-between p-6 max-w-7xl mx-auto">
-            <!-- Logo and Text Section -->
-            <div class="flex items-center">
-                <!-- Enlarged Logo Image -->
-                <img class="h-24 w-24 mr-6 rounded-full border-4 border-white shadow-lg"
-                    src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo" />
-                <!-- Title and Tagline -->
-                <div class="text-white">
-                    <h1 class="title text-2xl font-bold">PhishFinder</h1>
-                    <p class="text-sm">Stay Safe,Stay Aware</p>
+    <header class="bg-blue-500 w-full">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-24">
+                <!-- Logo and Title Section -->
+                <div class="flex items-center space-x-6">
+                    <div class="flex-shrink-0">
+                        <img class="h-16 w-16 rounded-full border-4 border-white shadow-lg"
+                            src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo" />
+                    </div>
+                    <div class="text-white">
+                        <h1 class="text-3xl font-mono font-bold tracking-tight">PhishFinder</h1>
+                        <p class="text-lg font-mono">Stay Safe, Stay Aware</p>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Navigation Links and Logout Button -->
-            <nav class="flex gap-8" aria-label="Global">
-                <a href="/learning" class="text-white text-sm font-semibold hover:text-gray-300">Learning</a>
-                <a href="/emails" class="text-white text-sm font-semibold hover:text-gray-300">Emails</a>
-                <a href="/dashboard" class="text-white text-sm font-semibold hover:text-gray-300">Dashboard</a>
-                <button @click="$emit('logout')" class="bg-red-500 py-2 px-4 rounded-lg hover:bg-red-600 text-white">
-                    Logout
-                </button>
-            </nav>
+                <!-- Navigation -->
+                <nav class="flex items-center space-x-8">
+                    <router-link to="/emails" class="text-white font-mono text-lg hover:text-gray-200 transition-colors"
+                        :class="{ 'font-bold': $route.path === '/emails' }">
+                        Emails
+                    </router-link>
+                    <router-link to="/dashboard"
+                        class="text-white font-mono text-lg hover:text-gray-200 transition-colors"
+                        :class="{ 'font-bold': $route.path === '/dashboard' }">
+                        Dashboard
+                    </router-link>
+                    <button @click="$emit('logout')"
+                        class="bg-red-500 hover:bg-red-600 text-white font-mono px-6 py-2 rounded-lg transition-colors">
+                        Logout
+                    </button>
+                </nav>
+            </div>
         </div>
     </header>
 </template>
@@ -29,44 +38,19 @@
 <script>
 export default {
     name: 'Header',
-    methods: {
-        logout() {
-            chrome.identity.getAuthToken({ interactive: false }, (token) => {
-                if (token) {
-                    chrome.identity.removeCachedAuthToken({ token }, () => {
-                        chrome.storage.local.set({ loggedOut: true }, () => {
-                            console.log('Logged out, redirecting to login page');
-                            this.$router.replace('/login');
-                        });
-                    });
-                } else {
-                    chrome.storage.local.set({ loggedOut: true }, () => {
-                        console.log('No token found, redirecting to login');
-                        this.$router.replace('/login');
-                    });
-                }
-            });
-        }
-    }
+    emits: ['logout']
 };
 </script>
 
 <style scoped>
-.title {
-    font-family: 'Space Mono', monospace;
-    font-size: 2rem;
-    /* Increase font size for h1 */
-}
-
-p {
-    font-family: 'Space Mono', monospace;
-    font-size: 1.25rem;
-    /* Increase font size for p */
-}
-
-a {
+.font-mono {
     font-family: 'Space Mono', monospace;
 }
 
-/* Additional styles if needed */
+/* Add any specific transitions */
+.transition-colors {
+    transition-property: color, background-color;
+    transition-duration: 200ms;
+    transition-timing-function: ease-in-out;
+}
 </style>

@@ -1,11 +1,12 @@
-// src/router/index.js
 import { createRouter, createWebHashHistory } from 'vue-router';
 import LoginPage from '../views/LoginPage.vue';
-import EmailPage from '../views/EmailPage.vue';  // Ensure this is your "Emails" page
+import EmailPage from '../views/EmailPage.vue';
+import Dashboard from '../views/Dashboard.vue';   
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginPage },
   { path: '/emails', name: 'Emails', component: EmailPage, meta: { requiresAuth: true } },
+  { path: '/dashboard', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },  // Add Dashboard route
   { path: '/', redirect: '/login' }  // Default redirect to login page
 ];
 

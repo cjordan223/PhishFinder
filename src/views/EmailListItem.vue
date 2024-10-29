@@ -29,10 +29,12 @@ export default {
     },
     computed: {
         hasLinkRisks() {
-            return this.email.linkRisks?.length > 0;
+            return Array.isArray(this.email.linkRisks) && this.email.linkRisks.length > 0;
         },
         hasKeywordFlag() {
-            return this.email.isFlagged;
+            return this.email.isFlagged === true &&
+                Array.isArray(this.email.keywords) &&
+                this.email.keywords.length > 0;
         }
     },
     methods: {

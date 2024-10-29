@@ -1,5 +1,4 @@
 <template>
-  <Header @logout="logout" />
   <div class="max-w-4xl mx-auto p-4">
     <div v-if="loading" class="text-center text-blue-500">Loading...</div>
     <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
@@ -130,11 +129,25 @@ export default {
 
     analyzeEmails(emails) {
       emails.forEach((email) => {
-        // Check for suspicious keywords
+        // Only analyze if not already analyzed
         if (email.isFlagged === undefined) {
           const result = SuspiciousWords(email);
-          email.isFlagged = result.isFlagged;
-          email.keywords = result.keywords;
+
+          // Add debug logging
+          console.log('Analyzing email:', {
+            subject: email.subject,
+            result: result,
+            text: `${email.subject || ''} ${email.snippet || ''}`
+          });
+
+          // Only set flags if keywords were actually found
+          if (result.keywords && result.keywords.length > 0) {
+            email.isFlagged = true;
+            email.keywords = result.keywords;
+          } else {
+            email.isFlagged = false;
+            email.keywords = [];
+          }
         }
 
         // Check for link risks if not already set
@@ -293,10 +306,15 @@ export default {
     },
     openEmailModal(email) {
       const result = SuspiciousWords(email);
+      console.log('Modal opening with analysis:', {
+        subject: email.subject,
+        result: result
+      });
+
       this.selectedEmail = {
         ...email,
-        isFlagged: result.isFlagged,
-        keywords: result.keywords
+        isFlagged: result.keywords && result.keywords.length > 0,
+        keywords: result.keywords || []
       };
     },
     closeEmailModal() {

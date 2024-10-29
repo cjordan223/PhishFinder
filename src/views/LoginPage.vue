@@ -1,11 +1,13 @@
 <template>
-  <div class="max-w-4xl mx-auto p-4 bg-gray-100 flex items-center justify-center min-h-[500px]">
-    <div class="bg-white shadow-lg rounded-lg p-8 max-w-sm w-full text-center">
-      <h1 class="text-2xl font-bold mb-4">Welcome to Phish Finder</h1>
-      <p class="text-gray-700 mb-6">Please login with your Google account to continue</p>
-      <button @click="login" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-        Login with Google
-      </button>
+  <div>
+    <div class="max-w-4xl mx-auto p-4 bg-gray-100 flex items-center justify-center min-h-[500px]">
+      <div class="bg-white shadow-lg rounded-lg p-8 max-w-sm w-full text-center">
+        <h1 class="text-2xl font-bold mb-4">Welcome to Phish Finder</h1>
+        <p class="text-gray-700 mb-6">Please login with your Google account to continue</p>
+        <button @click="login" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
+          Login with Google
+        </button>
+      </div>
     </div>
   </div>
 </template>
