@@ -18,11 +18,25 @@ export function SuspiciousWords(email) {
     'Request Notification', 'You have received a new document', 'Document For', 'View Attached Documents', 
     'shared a document with you'
   ];
+  
   const emailText = `${email.subject || ''} ${email.snippet || ''} ${email.body || ''}`.toLowerCase();
+  const foundKeywords = [];
 
-  const isPhishing = phishingKeywords.some(keyword => emailText.includes(keyword.toLowerCase()));
-  email.isFlagged = isPhishing;
-  return email.isFlagged;
+  // Find all matching keywords
+  phishingKeywords.forEach(keyword => {
+    if (emailText.includes(keyword.toLowerCase())) {
+      foundKeywords.push(keyword);
+    }
+  });
+
+  // Update the email object and return both flag and keywords
+  email.isFlagged = foundKeywords.length > 0;
+  email.keywords = foundKeywords;  // Store the found keywords
+
+  return {
+    isFlagged: foundKeywords.length > 0,
+    keywords: foundKeywords
+  };
 }
 
 // Extract header value by name

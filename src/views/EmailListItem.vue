@@ -40,7 +40,7 @@ export default {
             console.log('Opening email with data:', this.email); // Add this line
             this.$emit('open', {
                 ...this.email,
-                suspiciousKeywords: this.email.keywords // Make sure keywords are included
+                suspiciousKeywords: this.email.keywords || [] // Pass keywords if they exist
             });
         },
         formatDate(date) {

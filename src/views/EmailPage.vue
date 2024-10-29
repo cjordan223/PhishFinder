@@ -132,7 +132,9 @@ export default {
       emails.forEach((email) => {
         // Check for suspicious keywords
         if (email.isFlagged === undefined) {
-          email.isFlagged = SuspiciousWords(email);
+          const result = SuspiciousWords(email);
+          email.isFlagged = result.isFlagged;
+          email.keywords = result.keywords;
         }
 
         // Check for link risks if not already set
@@ -290,8 +292,12 @@ export default {
       this.errorMessage = message;
     },
     openEmailModal(email) {
-      email.isFlagged = SuspiciousWords(email);  // Update flag status before opening modal
-      this.selectedEmail = email;
+      const result = SuspiciousWords(email);
+      this.selectedEmail = {
+        ...email,
+        isFlagged: result.isFlagged,
+        keywords: result.keywords
+      };
     },
     closeEmailModal() {
       this.selectedEmail = null;

@@ -1,8 +1,10 @@
 <template>
+    <!-- Modal container, visible only if email prop is provided -->
     <div v-if="email"
         class="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50 overflow-y-auto">
         <div class="relative p-4 w-full max-w-2xl max-h-full mx-auto">
             <div class="relative bg-white rounded-lg shadow">
+                <!-- Modal header with email subject and close button -->
                 <div class="flex items-center justify-between p-4 md:p-5 border-b">
                     <h3 class="text-xl font-semibold">{{ email.subject || 'No Subject' }}</h3>
                     <button @click="close" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1.5">
@@ -13,6 +15,7 @@
                         <span class="sr-only">Close modal</span>
                     </button>
                 </div>
+                <!-- Modal body with email details and analysis results -->
                 <div class="p-4 space-y-4 md:p-5">
                     <p><strong>From:</strong> {{ email.from || 'Unknown Sender' }}</p>
                     <p><strong>Date:</strong> {{ formatDate(email.date) || 'Unknown Date' }}</p>
@@ -45,14 +48,14 @@
                     </div>
 
                     <!-- Display Suspicious Keywords -->
-                    <div v-if="suspiciousKeywords && suspiciousKeywords.length > 0" class="mt-4">
+                    <div v-if="hasKeywords" class="mt-4">
                         <p><strong>Suspicious Keywords:</strong></p>
                         <ul>
-                            <li v-for="keyword in suspiciousKeywords" :key="keyword" class="text-red-500">{{ keyword }}
+                            <li v-for="keyword in normalizedKeywords" :key="keyword" class="text-red-500">
+                                {{ keyword }}
                             </li>
                         </ul>
                     </div>
-
                     <!-- Display loading spinner if any API call is in progress -->
                     <div v-if="loading" class="flex items-center justify-center mt-4">
                         <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -64,6 +67,7 @@
                         <p class="ml-2">Analyzing...</p>
                     </div>
                 </div>
+                <!-- Modal footer with close and analyze buttons -->
                 <div class="flex items-center justify-end p-4 md:p-5 border-t">
                     <button @click="close"
                         class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg px-5 py-2.5">
@@ -90,25 +94,37 @@ export default {
             type: Object,
             required: true,
             validator(value) {
-                console.log('Email prop received:', value); // Add this line
+                console.log('Email prop received:', value); // Log received email prop
                 return true;
             }
         },
     },
+    computed: {
+        hasKeywords() {
+            return Array.isArray(this.suspiciousKeywords) &&
+                this.suspiciousKeywords.length > 0;
+        },
+        normalizedKeywords() {
+            return Array.isArray(this.suspiciousKeywords) ?
+                Array.from(this.suspiciousKeywords) : [];
+        }
+    },
     data() {
         return {
-            flaggedUrls: [],
-            safeBrowsingResult: null,
-            domainRisks: [],  // Store analysis result
-            aiAnalysisResult: null,  // Store AI analysis result
-            loading: false,  // Track loading state for API calls
-            suspiciousKeywords: [],  // Track suspicious keywords
+            flaggedUrls: [],  // URLs flagged by Safe Browsing API
+            safeBrowsingResult: null,  // Result of Safe Browsing API
+            domainRisks: [],  // Analysis result of domains and IPs
+            aiAnalysisResult: null,  // Result of AI analysis
+            loading: false,  // Loading state for API calls
+            suspiciousKeywords: [],  // Suspicious keywords found in email
         };
     },
     methods: {
+        // Emit close event to parent component
         close() {
             this.$emit('close');
         },
+        // Format date to a readable string
         formatDate(date) {
             if (!date) return 'Unknown Date';
             const options = {
@@ -117,9 +133,11 @@ export default {
             };
             return new Date(date).toLocaleDateString(undefined, options);
         },
+        // Sanitize email body to prevent XSS attacks
         sanitizeEmailBody(body) {
             return DOMPurify.sanitize(body, { USE_PROFILES: { html: true } });
         },
+        // Perform AI analysis on email content
         async AICheck() {
             const emailContent = this.email.body || 'No Content';
             if (emailContent.length < 300) {
@@ -142,6 +160,7 @@ export default {
                 this.loading = false;
             }
         },
+        // Analyze domains and IPs in email content
         async analyzeDomain() {
             const urls = extractUrlsFromEmail(this.email.body);
             if (urls.length === 0) {
@@ -159,6 +178,7 @@ export default {
                 this.loading = false;
             }
         },
+        // Test URLs in email content using Safe Browsing API
         async testSafeBrowsing() {
             const urls = extractUrlsFromEmail(this.email.body);
             if (urls.length === 0) {
@@ -173,10 +193,15 @@ export default {
                     body: JSON.stringify({ text: this.email.body }),
                 });
                 const result = await response.json();
-                console.log('API Response:', result); // Add this line
-                this.flaggedUrls = result.flaggedUrls.map(entry => entry.url);
+                console.log('API Response:', result);
+                this.flaggedUrls = result.flaggedUrls?.map(entry => entry.url) || [];
                 this.safeBrowsingResult = result.isSuspicious ? 'Suspicious' : 'Safe';
-                this.suspiciousKeywords = result.suspiciousKeywords || [];
+
+                // Combine API keywords with existing keywords
+                const apiKeywords = result.suspiciousKeywords || [];
+                const existingKeywords = Array.from(this.suspiciousKeywords || []);
+                this.suspiciousKeywords = [...new Set([...existingKeywords, ...apiKeywords])];
+
             } catch (error) {
                 console.error('Error calling Safe Browsing API:', error);
                 this.safeBrowsingResult = 'An error occurred while testing the Safe Browsing API.';
@@ -188,10 +213,13 @@ export default {
     mounted() {
         this.analyzeDomain();
         this.testSafeBrowsing();
-        // Initialize suspicious keywords from email prop if they exist
+
         if (this.email.keywords) {
-            this.suspiciousKeywords = this.email.keywords;
+            this.suspiciousKeywords = Array.from(this.email.keywords);
         }
+
+        console.log('Mounted: Email Keywords:', Array.from(this.email.keywords || []));
+        console.log('Mounted: Suspicious Keywords:', Array.from(this.suspiciousKeywords));
     }
 };
 </script>
