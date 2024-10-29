@@ -9,7 +9,8 @@
       <EmailListItem v-for="email in paginatedEmails" :key="email.id" :email="email" @open="openEmailModal" />
     </ul>
   </div>
-  <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
+  <EmailModal v-if="selectedEmail" :email="selectedEmail" :isFlaggedForKeywords="selectedEmail.isFlagged"
+    @close="closeEmailModal" />
 </template>
 
 <script>
@@ -18,6 +19,8 @@ import EmailModal from '@/views/EmailModal.vue';
 import PaginationControls from './PaginationControls.vue';
 import EmailListItem from '@/views/EmailListItem.vue';
 import { SuspiciousWords, parseHeader } from '@/utils/utils';
+import { linkAnalysis } from '@/utils/utils.js';
+
 
 export default {
   components: {
@@ -127,8 +130,14 @@ export default {
 
     analyzeEmails(emails) {
       emails.forEach((email) => {
+        // Check for suspicious keywords
         if (email.isFlagged === undefined) {
           email.isFlagged = SuspiciousWords(email);
+        }
+
+        // Check for link risks if not already set
+        if (!email.linkRisks) {
+          email.linkRisks = linkAnalysis(email.body) || [];
         }
       });
     },
@@ -280,8 +289,8 @@ export default {
       this.error = true;
       this.errorMessage = message;
     },
-
     openEmailModal(email) {
+      email.isFlagged = SuspiciousWords(email);  // Update flag status before opening modal
       this.selectedEmail = email;
     },
     closeEmailModal() {

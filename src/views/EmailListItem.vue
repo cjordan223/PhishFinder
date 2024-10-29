@@ -1,10 +1,17 @@
 <template>
     <li class="p-4 bg-white shadow rounded-lg cursor-pointer hover:shadow-lg transition" @click="openEmail">
         <strong>{{ email.subject || 'No Subject' }}</strong>
-        <div v-if="email.isFlagged" class="flex items-center space-x-2 text-red-500">
-            <img src="/images/icon128s.png" alt="suspicious" class="w-6 h-6" />
-            <span>🚩 Suspicious</span>
+
+        <!-- Security Risk Icon (for link risks) -->
+        <div v-if="hasLinkRisks" class="flex items-center space-x-2 text-red-500"> <span>🚩 Security Risk
+                Detected</span>
         </div>
+
+        <!-- Suspicious Keywords Icon -->
+        <div v-if="hasKeywordFlag" class="flex items-center space-x-2 text-yellow-500">
+            <span>🔍 Suspicious Keywords Detected</span>
+        </div>
+
         <p class="text-sm text-gray-500">From: {{ email.from || 'Unknown Sender' }}</p>
         <p class="text-sm text-gray-500">Date: {{ formatDate(email.date) || 'Unknown Date' }}</p>
         <p class="truncate" v-html="sanitizeEmailBody(email.snippet || 'No Snippet')"></p>
@@ -20,9 +27,21 @@ export default {
             required: true,
         },
     },
+    computed: {
+        hasLinkRisks() {
+            return this.email.linkRisks?.length > 0;
+        },
+        hasKeywordFlag() {
+            return this.email.isFlagged;
+        }
+    },
     methods: {
         openEmail() {
-            this.$emit('open', this.email);
+            console.log('Opening email with data:', this.email); // Add this line
+            this.$emit('open', {
+                ...this.email,
+                suspiciousKeywords: this.email.keywords // Make sure keywords are included
+            });
         },
         formatDate(date) {
             const options = {

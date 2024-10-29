@@ -44,6 +44,15 @@
                         </ul>
                     </div>
 
+                    <!-- Display Suspicious Keywords -->
+                    <div v-if="suspiciousKeywords && suspiciousKeywords.length > 0" class="mt-4">
+                        <p><strong>Suspicious Keywords:</strong></p>
+                        <ul>
+                            <li v-for="keyword in suspiciousKeywords" :key="keyword" class="text-red-500">{{ keyword }}
+                            </li>
+                        </ul>
+                    </div>
+
                     <!-- Display loading spinner if any API call is in progress -->
                     <div v-if="loading" class="flex items-center justify-center mt-4">
                         <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -80,6 +89,10 @@ export default {
         email: {
             type: Object,
             required: true,
+            validator(value) {
+                console.log('Email prop received:', value); // Add this line
+                return true;
+            }
         },
     },
     data() {
@@ -89,6 +102,7 @@ export default {
             domainRisks: [],  // Store analysis result
             aiAnalysisResult: null,  // Store AI analysis result
             loading: false,  // Track loading state for API calls
+            suspiciousKeywords: [],  // Track suspicious keywords
         };
     },
     methods: {
@@ -159,8 +173,10 @@ export default {
                     body: JSON.stringify({ text: this.email.body }),
                 });
                 const result = await response.json();
+                console.log('API Response:', result); // Add this line
                 this.flaggedUrls = result.flaggedUrls.map(entry => entry.url);
                 this.safeBrowsingResult = result.isSuspicious ? 'Suspicious' : 'Safe';
+                this.suspiciousKeywords = result.suspiciousKeywords || [];
             } catch (error) {
                 console.error('Error calling Safe Browsing API:', error);
                 this.safeBrowsingResult = 'An error occurred while testing the Safe Browsing API.';
@@ -172,6 +188,10 @@ export default {
     mounted() {
         this.analyzeDomain();
         this.testSafeBrowsing();
+        // Initialize suspicious keywords from email prop if they exist
+        if (this.email.keywords) {
+            this.suspiciousKeywords = this.email.keywords;
+        }
     }
 };
 </script>
