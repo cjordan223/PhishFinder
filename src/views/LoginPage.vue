@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="common-dimensions">
     <div class="max-w-4xl mx-auto p-4 bg-gray-100 flex items-center justify-center min-h-[500px]">
       <div class="bg-white shadow-lg rounded-lg p-8 max-w-sm w-full text-center">
         <h1 class="text-2xl font-bold mb-4">Welcome to Phish Finder</h1>
@@ -11,14 +11,10 @@
     </div>
   </div>
 </template>
-
-
 <script setup>
 import { onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-
 const router = useRouter();
-
 function login() {
   chrome.identity.getAuthToken({ interactive: true }, (token) => {
     if (token) {
@@ -32,7 +28,6 @@ function login() {
     }
   });
 }
-
 // Auto-login if token exists
 onMounted(() => {
   chrome.identity.getAuthToken({ interactive: false }, (token) => {
@@ -43,7 +38,6 @@ onMounted(() => {
   });
 });
 </script>
-
 <style scoped>
 .login-button {
   padding: 10px 20px;

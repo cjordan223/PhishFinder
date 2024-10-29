@@ -1,34 +1,24 @@
 <template>
-    <header class="bg-blue-500 w-full">
+    <header class="bg-blue-500 w-full py-4">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-24">
-                <!-- Logo and Title Section -->
                 <div class="flex items-center space-x-6">
                     <div class="flex-shrink-0">
                         <img class="h-16 w-16 rounded-full border-4 border-white shadow-lg"
-                            src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo" />
+                            src="/images/phishfinderlogo.png" alt="PhishFinder Logo">
                     </div>
                     <div class="text-white">
                         <h1 class="text-3xl font-mono font-bold tracking-tight">PhishFinder</h1>
                         <p class="text-lg font-mono">Stay Safe, Stay Aware</p>
                     </div>
                 </div>
-
-                <!-- Navigation -->
                 <nav class="flex items-center space-x-8">
-                    <router-link to="/emails" class="text-white font-mono text-lg hover:text-gray-200 transition-colors"
-                        :class="{ 'font-bold': $route.path === '/emails' }">
-                        Emails
-                    </router-link>
-                    <router-link to="/dashboard"
-                        class="text-white font-mono text-lg hover:text-gray-200 transition-colors"
-                        :class="{ 'font-bold': $route.path === '/dashboard' }">
-                        Dashboard
-                    </router-link>
+                    <a href="#/emails"
+                        class="text-white font-mono text-lg hover:text-gray-200 transition-colors">Emails</a>
+                    <a href="#/dashboard"
+                        class="text-white font-mono text-lg hover:text-gray-200 transition-colors">Dashboard</a>
                     <button @click="$emit('logout')"
-                        class="bg-red-500 hover:bg-red-600 text-white font-mono px-6 py-2 rounded-lg transition-colors">
-                        Logout
-                    </button>
+                        class="bg-red-500 hover:bg-red-600 text-white font-mono px-6 py-2 rounded-lg transition-colors">Logout</button>
                 </nav>
             </div>
         </div>
@@ -37,10 +27,10 @@
 
 <script>
 export default {
-    name: 'Header',
-    emits: ['logout']
+    name: 'Header'
 };
 </script>
+
 
 <style scoped>
 .font-mono {

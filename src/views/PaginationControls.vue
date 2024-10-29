@@ -41,11 +41,3 @@ export default {
     }
 };
 </script>
-
-<style scoped>
-.pagination-controls {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-}
-</style>

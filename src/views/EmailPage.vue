@@ -1,12 +1,14 @@
 <template>
-  <div class="max-w-4xl mx-auto p-4">
-    <div v-if="loading" class="text-center text-blue-500">Loading...</div>
-    <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
-    <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
-      @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
-    <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
-      <EmailListItem v-for="email in paginatedEmails" :key="email.id" :email="email" @open="openEmailModal" />
-    </ul>
+  <div class="common-dimensions pt-8">
+    <div class="max-w-4xl w-full mx-auto p-4 bg-white shadow-lg rounded-lg mt-24">
+      <div v-if="loading" class="text-center text-blue-500">Loading...</div>
+      <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
+      <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
+        @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
+      <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
+        <EmailListItem v-for="email in paginatedEmails" :key="email.id" :email="email" @open="openEmailModal" />
+      </ul>
+    </div>
   </div>
   <EmailModal v-if="selectedEmail" :email="selectedEmail" :isFlaggedForKeywords="selectedEmail.isFlagged"
     @close="closeEmailModal" />
@@ -346,17 +348,11 @@ export default {
   width: 100%;
 }
 
-.email-list {
-  width: 100%;
-  list-style: none;
-  padding: 0;
-}
-
-.email-snippet {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 14px;
-  color: #666;
+.common-dimensions {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>

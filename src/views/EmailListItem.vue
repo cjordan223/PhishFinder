@@ -63,12 +63,6 @@ export default {
 </script>
 
 <style scoped>
-.email-item {
-    border-bottom: 1px solid #ddd;
-    padding: 10px;
-    cursor: pointer;
-}
-
 .warning-text {
     color: red;
     font-weight: bold;
