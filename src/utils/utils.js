@@ -1,31 +1,52 @@
 // utils.js
 
 // Analyze if email contains suspicious words
+// This function checks if the email contains any phishing keywords and flags the email if it does.
+// Referenced in: analyzeEmailContent (background.js)
 export function SuspiciousWords(email) {
-  const phishingKeywords = ['urgent', 'password', 'suspicious', 'reset', 'verify'];
+  const phishingKeywords = [
+    // List of phishing keywords
+  ];
+  
+  const emailText = `${email.subject || ''} ${email.snippet || ''} ${email.body || ''}`.toLowerCase();
+  const foundKeywords = [];
 
-  const isPhishingInSubject = phishingKeywords.some(keyword => email.subject?.toLowerCase().includes(keyword));
-  const isPhishingInSnippet = phishingKeywords.some(keyword => email.snippet?.toLowerCase().includes(keyword));
-  const isPhishingInBody = phishingKeywords.some(keyword => email.body?.toLowerCase().includes(keyword));
+  // Find all matching keywords
+  phishingKeywords.forEach(keyword => {
+    if (emailText.includes(keyword.toLowerCase())) {
+      foundKeywords.push(keyword);
+    }
+  });
 
-  const isPhishing = isPhishingInSubject || isPhishingInSnippet || isPhishingInBody;
-  email.isFlagged = isPhishing;
-  return email.isFlagged;
+  // Update the email object and return both flag and keywords
+  email.isFlagged = foundKeywords.length > 0;
+  email.keywords = foundKeywords;  // Store the found keywords
+
+  return {
+    isFlagged: foundKeywords.length > 0,
+    keywords: foundKeywords
+  };
 }
 
 // Extract header value by name
+// This function extracts the value of a specific header from the email headers.
+// Referenced in: fetchEmailDetails (background.js)
 export function parseHeader(headers, name) {
   const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
   return header ? header.value : 'Unknown';
 }
 
 // Extract URLs from email content
+// This function extracts all URLs from the email content using a regular expression.
+// Referenced in: EmailModal.vue (testSafeBrowsing, analyzeDomain)
 export function extractUrlsFromEmail(emailContent) {
   const urlPattern = /https?:\/\/[^\s]+/g;
   return emailContent.match(urlPattern) || [];
 }
 
-
+// Analyze links in email content for mismatched display text and detect IP-based URLs
+// This function analyzes the email body for mismatched links and IP-based URLs, returning any risks found.
+// Referenced in: EmailModal.vue (analyzeDomain), analyzeEmailContent (background.js), analyzeDomain (utils.js)
 export function linkAnalysis(emailBody) {
   const risks = [];
   const anchorTagPattern = /<a\s+(?:[^>]*?\s+)?href=["'](https?:\/\/[^"']+)["'][^>]*>(.*?)<\/a>/gi;
@@ -34,15 +55,12 @@ export function linkAnalysis(emailBody) {
   while ((match = anchorTagPattern.exec(emailBody)) !== null) {
     const actualUrl = match[1];  // The URL in the href attribute
     const displayText = match[2]; // The text displayed in the link
-    console.log(actualUrl);
-    console.log(displayText);
 
-
-    
-    // If the display text looks like a URL but doesn't match the actual URL
-    //THIS WORKS BUT....it is simple and needs more refinement. google.com linking to https://msn.com will not get caught, only https:// links
-
-    if (displayText.match(/https?:\/\/|www\./) && !displayText.includes(actualUrl)) {
+    // Check if the display text looks like a URL but does not match the actual URL
+    if (
+      displayText.match(/https?:\/\/|www\./) && 
+      !actualUrl.includes(displayText.replace(/https?:\/\//, '').replace('www.', '').split('/')[0])
+    ) {
       risks.push(`Mismatched link: display text "${displayText}" does not match URL "${actualUrl}"`);
     }
 
@@ -56,16 +74,88 @@ export function linkAnalysis(emailBody) {
 }
 
 // Analyze the email and check for any suspicious characteristics
+// This function combines various checks (suspicious words, backend analysis, link analysis) to flag the email.
+// Referenced in: Not explicitly referenced in the provided context
 export async function analyzeEmailContent(email, sendToBackendForAnalysis) {
   const isFlaggedLocally = SuspiciousWords(email);
   const isFlaggedByBackend = await sendToBackendForAnalysis(email.body);
   const linkRisks = linkAnalysis(email.body);
   const isFlaggedByLinks = linkRisks.length > 0;
 
+  // Combine flags from all sources
   const isFlagged = isFlaggedLocally || isFlaggedByBackend || isFlaggedByLinks;
   email.isFlagged = isFlagged;
   email.linkRisks = linkRisks;
 
+  // Log comprehensive analysis
+  console.log('Detailed Email Analysis:', {
+    subject: email.subject,
+    keywordFlag: isFlaggedLocally,
+    matchedKeyword: email.keywordMatch,
+    backendFlag: isFlaggedByBackend,
+    linkRisks: linkRisks,
+    overallFlag: email.isFlagged
+  });
+
   return email;
 }
 
+// Extract email body from Gmail API response
+// This function extracts the email body from the Gmail API response, decoding it from base64.
+// Referenced in: fetchEmailDetails (background.js)
+export function extractEmailBody(payload) {
+  let body = '';
+  if (payload.parts) {
+    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
+    if (htmlPart?.body?.data) {
+      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    }
+  } else if (payload.body?.data) {
+    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+  }
+  return body || 'No body content available';
+}
+
+// Analyze domain
+// This function analyzes the email body for suspicious links and alerts the user if any are found.
+// Referenced in: EmailModal.vue (analyzeDomain)
+export async function analyzeDomain() {
+  try {
+    const linkRisks = linkAnalysis(this.email.body);  // Directly call linkAnalysis here
+    if (linkRisks.length > 0) {
+      alert(`Suspicious links detected: ${linkRisks.join(', ')}`);
+    } else {
+      alert('No suspicious links detected.');
+    }
+  } catch (error) {
+    console.error('Failed to analyze email links:', error);
+    alert('An error occurred while analyzing the email links.');
+  }
+}
+
+// Check if an email ID is already processed
+// This function checks if an email ID has already been processed and stored in Chrome's local storage.
+// Referenced in: saveEmailToBackend (background.js)
+export async function isEmailProcessed(emailId) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['processedEmails'], (result) => {
+      const processedEmails = result.processedEmails || [];
+      resolve(processedEmails.includes(emailId));
+    });
+  });
+}
+
+// Mark an email ID as processed
+// This function marks an email ID as processed by storing it in Chrome's local storage.
+// Referenced in: saveEmailToBackend (background.js)
+export async function markEmailAsProcessed(emailId) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['processedEmails'], (result) => {
+      const processedEmails = result.processedEmails || [];
+      if (!processedEmails.includes(emailId)) {
+        processedEmails.push(emailId);
+      }
+      chrome.storage.local.set({ processedEmails }, () => resolve());
+    });
+  });
+}

@@ -1,5 +1,9 @@
-import { SuspiciousWords, parseHeader, analyzeEmailContent } from './utils/utils.js';
+import { isEmailProcessed, markEmailAsProcessed, parseHeader, analyzeEmailContent, extractEmailBody, linkAnalysis } from './utils/utils.js';
+import DOMPurify from 'dompurify';
+
 // Fetch and analyze emails
+// This function fetches emails from the Gmail API and analyzes them for suspicious content.
+// Referenced in: chrome.runtime.onInstalled, chrome.runtime.onStartup, chrome.alarms.onAlarm
 function fetchAndAnalyzeEmails() {
   console.log('fetchAndAnalyzeEmails called');
   chrome.identity.getAuthToken({ interactive: false }, async (token) => {
@@ -35,19 +39,49 @@ function fetchAndAnalyzeEmails() {
   });
 }
 
+// Analyze emails
+// This function analyzes a list of emails for suspicious content and saves flagged emails to local storage and backend.
+// Referenced in: fetchAndAnalyzeEmails
 async function analyzeEmails(emails) {
   const flaggedEmails = [];
 
   for (const email of emails) {
+    // Analyze email content for suspicious flags
     const analyzedEmail = await analyzeEmailContent(email, sendToBackendForAnalysis);
-
-    console.log('Analyzed email:', analyzedEmail.subject, '| isFlagged:', analyzedEmail.isFlagged, '| Link Risks:', analyzedEmail.linkRisks);
+    
+    // More detailed logging
+    console.log('Email Analysis:', {
+      subject: analyzedEmail.subject,
+      keywordMatch: analyzedEmail.keywordMatch || 'none', 
+      linkRisks: analyzedEmail.linkRisks || [],
+      isFlagged: analyzedEmail.isFlagged
+    });
 
     if (analyzedEmail.isFlagged) {
       flaggedEmails.push(analyzedEmail);
     }
+
+    // Clean the email body using DOMPurify
+    const cleanBody = (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) 
+      ? DOMPurify.sanitize(email.body, { USE_PROFILES: { html: true } })
+      : email.body; // Fallback to raw body if DOMPurify is unavailable
+
+    // Prepare data for backend storage
+    const emailData = {
+      id: email.id,
+      sender: email.from,
+      subject: email.subject,
+      body: cleanBody,
+      extractedUrls: linkAnalysis(email.body),
+      timestamp: new Date(email.date).toISOString(),
+      safebrowsingFlag: analyzedEmail.isFlagged ? 'yes' : 'no',
+    };
+
+    // Store each analyzed email in the backend database if not processed
+    await saveEmailToBackend(emailData);
   }
 
+  // Save flagged emails to local storage if any found
   if (flaggedEmails.length > 0) {
     chrome.storage.local.set({ flaggedEmails }, () => {
       console.log('Flagged emails saved to storage:', flaggedEmails);
@@ -55,32 +89,41 @@ async function analyzeEmails(emails) {
   }
 }
 
-// Analyze links for text/URL mismatches and other risks
-function linkAnalysis(emailBody) {
-  const risks = [];
-  const urlPattern = /https?:\/\/[^\s<>"]+|www\.[^\s<>"]+/g;
-  const links = emailBody.match(urlPattern) || [];
+// Save email data to the backend only if not already processed
+// This function saves email data to the backend if it has not been processed before.
+// Referenced in: analyzeEmails
+async function saveEmailToBackend(emailData) {
+  const isProcessed = await isEmailProcessed(emailData.id);
+  if (isProcessed) {
+    console.log(`Email with ID ${emailData.id} is already processed. Skipping backend call.`);
+    return;
+  }
 
-  links.forEach(link => {
-    // Check for URL/text mismatch
-    const displayTextMatch = new RegExp(`<a[^>]+>${link}</a>`).exec(emailBody);
-    if (displayTextMatch && !displayTextMatch[0].includes(link)) {
-      risks.push(`Mismatched link display text: ${link}`);
+  try {
+    const response = await fetch('http://localhost:8080/api/saveEmailAnalysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(emailData),
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      console.log('Email analysis saved successfully:', result.id);
+      await markEmailAsProcessed(emailData.id); // Mark as processed after successful save
+    } else {
+      console.error('Failed to save email analysis:', result.error);
     }
-
-    // Check for IP-based URLs
-    if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(link)) {
-      risks.push(`IP address URL detected: ${link}`);
-    }
-  });
-
-  return risks;
+  } catch (error) {
+    console.error('Error saving email to backend:', error);
+  }
 }
 
 // Send email content to the backend for analysis
+// This function sends email content to the backend for analysis and returns whether it is flagged as suspicious.
+// Referenced in: analyzeEmailContent (utils.js)
 async function sendToBackendForAnalysis(text) {
   try {
-    const response = await fetch('http://localhost:3000/api/analyze', {
+    const response = await fetch('http://localhost:8080/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,6 +140,8 @@ async function sendToBackendForAnalysis(text) {
 }
 
 // Fetch email details
+// This function fetches detailed information about an email from the Gmail API.
+// Referenced in: fetchAndAnalyzeEmails
 function fetchEmailDetails(token, messageId) {
   const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
 
@@ -120,26 +165,13 @@ function fetchEmailDetails(token, messageId) {
     .catch(error => console.error('Error fetching email details:', error));
 }
 
-// Extract email body from Gmail API response
-function extractEmailBody(payload) {
-  let body = '';
-  if (payload.parts) {
-    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
-    if (htmlPart?.body?.data) {
-      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    }
-  } else if (payload.body?.data) {
-    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-  }
-  return body || 'No body content available';
-}
-
 // EVENT LISTENERS
 
 // On extension installation
+// This event listener is triggered when the extension is installed. It clears the flagged emails cache and fetches and analyzes emails.
+// Referenced in: chrome.runtime.onInstalled
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed');
-  // Clear any existing flagged emails
   chrome.storage.local.remove(['flaggedEmails'], () => {
     console.log('Cleared flagged emails cache');
   });
@@ -147,15 +179,17 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // On browser startup
+// This event listener is triggered when the browser starts up. It fetches and analyzes emails.
+// Referenced in: chrome.runtime.onStartup
 chrome.runtime.onStartup.addListener(() => {
   console.log('Browser started up');
-  // Fetch and analyze emails on startup
   fetchAndAnalyzeEmails();
 });
 
-// Create an alarm to fetch emails periodically (every 5 minutes)
+// Periodic alarm to check emails
+// This event listener is triggered periodically by an alarm to fetch and analyze emails.
+// Referenced in: chrome.alarms.create, chrome.alarms.onAlarm
 chrome.alarms.create('checkEmails', { periodInMinutes: 5 });
-
 chrome.alarms.onAlarm.addListener((alarm) => {
   console.log('Alarm triggered:', alarm.name);
   if (alarm.name === 'checkEmails') {

@@ -1,15 +1,19 @@
 <template>
-  <Header @logout="logout" />
-  <div class="max-w-4xl mx-auto p-4">
-    <div v-if="loading" class="text-center text-blue-500">Loading...</div>
-    <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
-    <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
-      @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
-    <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
-      <EmailListItem v-for="email in paginatedEmails" :key="email.id" :email="email" @open="openEmailModal" />
-    </ul>
+  <div class="common-dimensions pt-24"> <!-- Adjusted padding top -->
+    <Header @logout="logout" />
+
+    <div class="max-w-4xl w-full mx-auto p-4 bg-white shadow-lg rounded-lg mt-24 email-page-background">
+      <div v-if="loading" class="text-center text-blue-500">Loading...</div>
+      <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
+      <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
+        @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
+      <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
+        <EmailListItem v-for="email in paginatedEmails" :key="email.id" :email="email" @open="openEmailModal" />
+      </ul>
+    </div>
   </div>
-  <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
+  <EmailModal v-if="selectedEmail" :email="selectedEmail" :isFlaggedForKeywords="selectedEmail.isFlagged"
+    @close="closeEmailModal" />
 </template>
 
 <script>
@@ -18,6 +22,7 @@ import EmailModal from '@/views/EmailModal.vue';
 import PaginationControls from './PaginationControls.vue';
 import EmailListItem from '@/views/EmailListItem.vue';
 import { SuspiciousWords, parseHeader } from '@/utils/utils';
+import { linkAnalysis } from '@/utils/utils.js';
 
 export default {
   components: {
@@ -127,8 +132,30 @@ export default {
 
     analyzeEmails(emails) {
       emails.forEach((email) => {
+        // Only analyze if not already analyzed
         if (email.isFlagged === undefined) {
-          email.isFlagged = SuspiciousWords(email);
+          const result = SuspiciousWords(email);
+
+          // Add debug logging
+          console.log('Analyzing email:', {
+            subject: email.subject,
+            result: result,
+            text: `${email.subject || ''} ${email.snippet || ''}`
+          });
+
+          // Only set flags if keywords were actually found
+          if (result.keywords && result.keywords.length > 0) {
+            email.isFlagged = true;
+            email.keywords = result.keywords;
+          } else {
+            email.isFlagged = false;
+            email.keywords = [];
+          }
+        }
+
+        // Check for link risks if not already set
+        if (!email.linkRisks) {
+          email.linkRisks = linkAnalysis(email.body) || [];
         }
       });
     },
@@ -280,9 +307,18 @@ export default {
       this.error = true;
       this.errorMessage = message;
     },
-
     openEmailModal(email) {
-      this.selectedEmail = email;
+      const result = SuspiciousWords(email);
+      console.log('Modal opening with analysis:', {
+        subject: email.subject,
+        result: result
+      });
+
+      this.selectedEmail = {
+        ...email,
+        isFlagged: result.keywords && result.keywords.length > 0,
+        keywords: result.keywords || []
+      };
     },
     closeEmailModal() {
       this.selectedEmail = null;
@@ -313,17 +349,11 @@ export default {
   width: 100%;
 }
 
-.email-list {
-  width: 100%;
-  list-style: none;
-  padding: 0;
-}
-
-.email-snippet {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 14px;
-  color: #666;
+.common-dimensions {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>

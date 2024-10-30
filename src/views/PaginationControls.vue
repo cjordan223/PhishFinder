@@ -1,17 +1,19 @@
-<!--PaginationControls.vue-->
-<!-- logic stays in EmailPage, this is a 'dumb' component-->
+<!-- PaginationControls.vue -->
 <template>
-    <div class="flex justify-between mt-6">
-        <button @click.prevent="prevPage" :disabled="currentPage === 1"
-            class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 disabled:bg-gray-300">
-            Previous
+    <div>
+        <button @click.prevent="prevPage" :disabled="currentPage === 1" class="arrow-button left"
+            aria-label="Previous page">
+            <!-- Left arrow icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
         </button>
-        <button @click.prevent="goToHome" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-            Home
-        </button>
-        <button @click.prevent="nextPage" :disabled="nextPageDisabled"
-            class="bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 disabled:bg-gray-300">
-            Next
+        <button @click.prevent="nextPage" :disabled="nextPageDisabled" class="arrow-button right"
+            aria-label="Next page">
+            <!-- Right arrow icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
         </button>
     </div>
 </template>
@@ -26,7 +28,7 @@ export default {
         nextPageDisabled: {
             type: Boolean,
             required: true,
-        }
+        },
     },
     methods: {
         prevPage() {
@@ -35,17 +37,41 @@ export default {
         nextPage() {
             this.$emit('nextPage');
         },
-        goToHome() {
-            this.$emit('goToHome');
-        }
-    }
+    },
 };
 </script>
 
 <style scoped>
-.pagination-controls {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
+.arrow-button {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.arrow-button.left {
+    left: 10px;
+}
+
+.arrow-button.right {
+    right: 10px;
+}
+
+.icon {
+    width: 32px;
+    height: 32px;
+    color: #333;
+}
+
+.arrow-button:hover .icon {
+    color: #555;
+}
+
+.arrow-button:disabled .icon {
+    color: #ccc;
+    cursor: not-allowed;
 }
 </style>

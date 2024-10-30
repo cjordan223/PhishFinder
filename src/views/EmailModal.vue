@@ -1,14 +1,12 @@
 <template>
+    <!-- Modal container, visible only if email prop is provided -->
     <div v-if="email"
         class="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50 overflow-y-auto">
         <div class="relative p-4 w-full max-w-2xl max-h-full mx-auto">
-            <!-- Modal Content -->
             <div class="relative bg-white rounded-lg shadow">
-                <!-- Modal Header -->
+                <!-- Modal header with email subject and close button -->
                 <div class="flex items-center justify-between p-4 md:p-5 border-b">
-                    <h3 class="text-xl font-semibold">
-                        {{ email.subject || 'No Subject' }}
-                    </h3>
+                    <h3 class="text-xl font-semibold">{{ email.subject || 'No Subject' }}</h3>
                     <button @click="close" class="text-gray-400 hover:bg-gray-200 hover:text-gray-900 rounded-lg p-1.5">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -17,15 +15,59 @@
                         <span class="sr-only">Close modal</span>
                     </button>
                 </div>
-                <!-- Modal Body -->
+                <!-- Modal body with email details and analysis results -->
                 <div class="p-4 space-y-4 md:p-5">
                     <p><strong>From:</strong> {{ email.from || 'Unknown Sender' }}</p>
                     <p><strong>Date:</strong> {{ formatDate(email.date) || 'Unknown Date' }}</p>
-                    <!-- Display the sanitized email body -->
-                    <div class="email-body-content" v-html="sanitizeEmailBody(email.body)">
+                    <div class="email-body-content" v-html="sanitizeEmailBody(email.body)"></div>
+
+                    <!-- Display AI Analysis Result -->
+                    <div v-if="aiAnalysisResult !== null" class="mt-4">
+                        <p><strong>AI Analysis:</strong> {{ aiAnalysisResult }}</p>
+                    </div>
+
+                    <!-- Display Flagged URLs from Safe Browsing API -->
+                    <div v-if="flaggedUrls && flaggedUrls.length > 0" class="mt-4">
+                        <p><strong>Flagged URLs:</strong></p>
+                        <ul>
+                            <li v-for="url in flaggedUrls" :key="url" class="text-red-500">{{ url }}</li>
+                        </ul>
+                    </div>
+
+                    <!-- Display Safe Browsing Result -->
+                    <div v-if="safeBrowsingResult" class="mt-4">
+                        <p><strong>Safe Browsing Status:</strong> {{ safeBrowsingResult }}</p>
+                    </div>
+
+                    <!-- Display Domain and IP Risks -->
+                    <div v-if="domainRisks && domainRisks.length > 0" class="mt-4">
+                        <p><strong>Domain and IP Analysis:</strong></p>
+                        <ul>
+                            <li v-for="risk in domainRisks" :key="risk" class="text-red-500">{{ risk }}</li>
+                        </ul>
+                    </div>
+
+                    <!-- Display Suspicious Keywords -->
+                    <div v-if="hasKeywords" class="mt-4">
+                        <p><strong>Suspicious Keywords:</strong></p>
+                        <ul>
+                            <li v-for="keyword in normalizedKeywords" :key="keyword" class="text-red-500">
+                                {{ keyword }}
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- Display loading spinner if any API call is in progress -->
+                    <div v-if="loading" class="flex items-center justify-center mt-4">
+                        <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0116 0H4z"></path>
+                        </svg>
+                        <p class="ml-2">Analyzing...</p>
                     </div>
                 </div>
-                <!-- Modal Footer -->
+                <!-- Modal footer with close and analyze buttons -->
                 <div class="flex items-center justify-end p-4 md:p-5 border-t">
                     <button @click="close"
                         class="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg px-5 py-2.5">
@@ -35,14 +77,6 @@
                         class="ml-2 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg px-5 py-2.5">
                         Analyze for AI
                     </button>
-                    <button @click="analyzeEmail"
-                        class="ml-2 text-white bg-indigo-700 hover:bg-indigo-800 font-medium rounded-lg px-5 py-2.5">
-                        Mismatched Domains / IP's
-                    </button>
-                    <button @click="testSafeBrowsing"
-                        class="ml-2 text-white bg-purple-700 hover:bg-purple-800 font-medium rounded-lg px-5 py-2.5">Test
-                        Safe Browsing API</button>
-
                 </div>
             </div>
         </div>
@@ -51,7 +85,7 @@
 
 <script>
 import DOMPurify from 'dompurify';
-import { linkAnalysis, analyzeEmailContent, extractUrlsFromEmail } from '@/utils/utils.js';
+import { linkAnalysis, extractUrlsFromEmail } from '@/utils/utils.js';
 
 export default {
     name: 'EmailModal',
@@ -59,12 +93,38 @@ export default {
         email: {
             type: Object,
             required: true,
+            validator(value) {
+                console.log('Email prop received:', value); // Log received email prop
+                return true;
+            }
         },
     },
+    computed: {
+        hasKeywords() {
+            return Array.isArray(this.suspiciousKeywords) &&
+                this.suspiciousKeywords.length > 0;
+        },
+        normalizedKeywords() {
+            return Array.isArray(this.suspiciousKeywords) ?
+                Array.from(this.suspiciousKeywords) : [];
+        }
+    },
+    data() {
+        return {
+            flaggedUrls: [],  // URLs flagged by Safe Browsing API
+            safeBrowsingResult: null,  // Result of Safe Browsing API
+            domainRisks: [],  // Analysis result of domains and IPs
+            aiAnalysisResult: null,  // Result of AI analysis
+            loading: false,  // Loading state for API calls
+            suspiciousKeywords: [],  // Suspicious keywords found in email
+        };
+    },
     methods: {
+        // Emit close event to parent component
         close() {
             this.$emit('close');
         },
+        // Format date to a readable string
         formatDate(date) {
             if (!date) return 'Unknown Date';
             const options = {
@@ -73,124 +133,98 @@ export default {
             };
             return new Date(date).toLocaleDateString(undefined, options);
         },
+        // Sanitize email body to prevent XSS attacks
         sanitizeEmailBody(body) {
             return DOMPurify.sanitize(body, { USE_PROFILES: { html: true } });
         },
+        // Perform AI analysis on email content
         async AICheck() {
-            console.log('API Token:', process.env.API_TOKEN); // Debugging purpose
-
             const emailContent = this.email.body || 'No Content';
-
             if (emailContent.length < 300) {
-                alert('The email content is too short to analyze reliably.');
+                this.aiAnalysisResult = 'The email content is too short to analyze reliably.';
                 return;
             }
-
+            this.loading = true;
             try {
-                const response = await fetch('http://localhost:3000/api/ai-analyze', { // Updated endpoint
+                const response = await fetch('http://localhost:8080/api/ai-analyze', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: emailContent }),
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Error: ${response.statusText}`);
-                }
-
                 const result = await response.json();
-                console.log('AI Detection Result:', result);
-                alert(`Human Score: ${result.score}%. This email is ${result.score}% likely to be written by a human.`);
+                this.aiAnalysisResult = `Human Score: ${result.score}%. This email is ${result.score}% likely to be written by a human.`;
             } catch (error) {
                 console.error('Failed to analyze email:', error);
-                alert('An error occurred while analyzing the email.');
+                this.aiAnalysisResult = 'An error occurred while analyzing the email.';
+            } finally {
+                this.loading = false;
             }
         },
-        async analyzeEmail() {
-            console.log('API Token:', process.env.API_TOKEN);
+        // Analyze domains and IPs in email content
+        async analyzeDomain() {
+            const urls = extractUrlsFromEmail(this.email.body);
+            if (urls.length === 0) {
+                this.domainRisks = ['No URLs found in the email.'];
+                return;
+            }
+            this.loading = true;
             try {
-                const analyzedEmail = await analyzeEmailContent(this.email, this.sendToBackendForAnalysis);
-                const message = analyzedEmail.isFlagged
-                    ? `Suspicious content found. Risks: ${analyzedEmail.linkRisks.join(', ')}`
-                    : 'No suspicious content found.';
-                alert(message);
+                const linkRisks = linkAnalysis(this.email.body);
+                this.domainRisks = linkRisks;
             } catch (error) {
-                console.error('Failed to analyze email:', error);
-                alert('An error occurred while analyzing the email.');
+                console.error('Failed to analyze email links:', error);
+                this.domainRisks = ['An error occurred while analyzing the email links.'];
+            } finally {
+                this.loading = false;
             }
         },
+        // Test URLs in email content using Safe Browsing API
         async testSafeBrowsing() {
             const urls = extractUrlsFromEmail(this.email.body);
             if (urls.length === 0) {
-                alert('No URLs found in the email.');
+                this.safeBrowsingResult = 'No URLs found in the email.';
                 return;
             }
-
+            this.loading = true;
             try {
-                const response = await fetch('http://localhost:3000/api/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: this.email.body }),
-                });
-
-                const result = await response.json();
-                if (result.flaggedUrls && result.flaggedUrls.length > 0) {
-                    const flaggedUrls = result.flaggedUrls.map(entry => entry.url); // Extract URLs only
-                    alert('Suspicious URLs detected: ' + flaggedUrls.join(', '));
-                } else {
-                    alert('No suspicious URLs detected.');
-                }
-            } catch (error) {
-                console.error('Error calling Safe Browsing API:', error);
-                alert('An error occurred while testing the Safe Browsing API.');
-            }
-        },
-        async sendToBackendForAnalysis(text) {
-            try {
-                const response = await fetch('http://localhost:3000/api/analyze', {
+                const response = await fetch('http://localhost:8080/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text }),
+                    body: JSON.stringify({ text: this.email.body }),
                 });
                 const result = await response.json();
-                return result.isSuspicious || false;
+                console.log('API Response:', result);
+                this.flaggedUrls = result.flaggedUrls?.map(entry => entry.url) || [];
+                this.safeBrowsingResult = result.isSuspicious ? 'Suspicious' : 'Safe';
+
+                // Combine API keywords with existing keywords
+                const apiKeywords = result.suspiciousKeywords || [];
+                const existingKeywords = Array.from(this.suspiciousKeywords || []);
+                this.suspiciousKeywords = [...new Set([...existingKeywords, ...apiKeywords])];
+
             } catch (error) {
-                console.error('Error calling backend API:', error);
-                return false;
+                console.error('Error calling Safe Browsing API:', error);
+                this.safeBrowsingResult = 'An error occurred while testing the Safe Browsing API.';
+            } finally {
+                this.loading = false;
             }
         }
+    },
+    mounted() {
+        this.analyzeDomain();
+        this.testSafeBrowsing();
+
+        if (this.email.keywords) {
+            this.suspiciousKeywords = Array.from(this.email.keywords);
+        }
+
+        console.log('Mounted: Email Keywords:', Array.from(this.email.keywords || []));
+        console.log('Mounted: Suspicious Keywords:', Array.from(this.suspiciousKeywords));
     }
 };
 </script>
 
 <style scoped>
-.email-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(87, 93, 106, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow-y: auto;
-}
-
-.modal-content {
-    background-color: #e0f7fa;
-    padding: 20px;
-    border-radius: 5px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    overflow-y: auto;
-    position: relative;
-}
-
 .email-body-content {
     white-space: pre-wrap;
     overflow-wrap: break-word;
