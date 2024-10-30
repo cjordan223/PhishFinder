@@ -2,8 +2,9 @@
 <template>
   <div id="app">
 
-    <!-- This is where the routed pages (LoginPage or EmailPage) will be rendered -->
-    <router-view></router-view>
+    <transition name="fade" mode="out-in">
+      <router-view />
+    </transition>
   </div>
 </template>
 
@@ -29,5 +30,5 @@ export default {
 </script>
 
 <style scoped>
-/* No custom styles needed here, replaced with Tailwind classes in the template */
+@import './assets/main.css';
 </style>
