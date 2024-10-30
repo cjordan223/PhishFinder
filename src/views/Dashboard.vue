@@ -1,6 +1,8 @@
 <template>
-    <div class="common-dimensions pt-40">
-        <div class="p-4 space-y-4 mt-34">
+    <div class="common-dimensions pt-24 mt-36"> <!-- Adjusted padding top and added margin top -->
+        <Header @logout="logout" />
+
+        <div class="p-4 space-y-4 metrics-dashboard">
             <!-- Header with time range selector -->
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold">Security Dashboard</h1>
@@ -54,8 +56,7 @@
                     <div class="text-2xl font-bold text-yellow-500">{{ metrics.suspiciousUrls }}</div>
                     <p class="text-xs text-gray-500">
                         {{ calculatePercentageChange(metrics.previousSuspiciousUrls, metrics.suspiciousUrls) }}% from
-                        last
-                        period
+                        last period
                     </p>
                 </div>
             </div>
@@ -64,24 +65,20 @@
                 <h3 class="text-lg font-semibold mb-4">Email Activity</h3>
                 <canvas ref="chartContainer" width="400" height="300" class="h-[300px]"></canvas>
             </div>
-            <!-- Back to Email Page Button -->
-            <div class="flex justify-end mt-4">
-                <button @click="navigateToEmailPage"
-                    class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-                    Back to Email Page
-                </button>
-            </div>
         </div>
     </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Chart from 'chart.js/auto';
+import Header from './Header.vue';
 
 export default {
     name: 'Dashboard',
+    components: {
+        Header
+    },
     data() {
         return {
             timeRange: '7d',
@@ -176,6 +173,12 @@ export default {
 
         navigateToEmailPage() {
             this.router.push('/emails');
+        },
+
+        logout() {
+            chrome.storage.local.set({ loggedOut: true }, () => {
+                this.$router.push('/login');
+            });
         }
     },
     mounted() {

@@ -1,6 +1,8 @@
 <template>
-  <div class="common-dimensions pt-8">
-    <div class="max-w-4xl w-full mx-auto p-4 bg-white shadow-lg rounded-lg mt-24">
+  <div class="common-dimensions pt-24"> <!-- Adjusted padding top -->
+    <Header @logout="logout" />
+
+    <div class="max-w-4xl w-full mx-auto p-4 bg-white shadow-lg rounded-lg mt-24 email-page-background">
       <div v-if="loading" class="text-center text-blue-500">Loading...</div>
       <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
       <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
@@ -21,7 +23,6 @@ import PaginationControls from './PaginationControls.vue';
 import EmailListItem from '@/views/EmailListItem.vue';
 import { SuspiciousWords, parseHeader } from '@/utils/utils';
 import { linkAnalysis } from '@/utils/utils.js';
-
 
 export default {
   components: {

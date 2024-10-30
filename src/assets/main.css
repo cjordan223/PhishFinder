@@ -1,13 +1,24 @@
 /* src/assets/main.css */
+body, html {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #5594B9, #20446D);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* Your existing styles */
 .common-dimensions {
   width: 100vw;
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  background: linear-gradient(135deg, #5594B9, #20446D);
 }
-
- 
 /* Add transition styles */
 .fade-enter-active,
 .fade-leave-active {
@@ -16,8 +27,16 @@
 
 .fade-enter,
 .fade-leave-to
-
 /* .fade-leave-active in <2.1.8 */
-  {
+{
   opacity: 0;
+}/* New class for the email page background */
+.email-page-background, .headervue {
+  background: linear-gradient(135deg, #5594B9, #20446D); /* Gradient background */
+}
+
+metrics-dashboard {
+  
+  background-color: burlywood;
+  /* add background for metrics here */
 }

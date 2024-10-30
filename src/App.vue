@@ -1,29 +1,33 @@
 <!-- src/App.vue -->
 <template>
   <div id="app">
-    <Header @logout="logout" />
-    <transition name="fade" mode="out-in">
-      <router-view />
-    </transition>
+
+    <!-- This is where the routed pages (LoginPage or EmailPage) will be rendered -->
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
-import Header from './views/Header.vue';
 
 export default {
-  name: 'App',
-  components: {
-    Header
+  computed: {
+    isLoggedIn() {
+      return !this.loggedOut;
+    },
   },
-  methods: {
-    logout() {
-      chrome.storage.local.set({ loggedOut: true }, () => {
-        this.$router.push('/login');
-      });
-    }
-  }
+  data() {
+    return {
+      loggedOut: true,
+    };
+  },
+  mounted() {
+    chrome.storage.local.get('loggedOut', (result) => {
+      this.loggedOut = result.loggedOut;
+    });
+  },
 };
 </script>
 
-<style></style>
+<style scoped>
+/* No custom styles needed here, replaced with Tailwind classes in the template */
+</style>

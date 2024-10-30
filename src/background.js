@@ -1,5 +1,6 @@
 import { isEmailProcessed, markEmailAsProcessed, parseHeader, analyzeEmailContent, extractEmailBody, linkAnalysis } from './utils/utils.js';
 import DOMPurify from 'dompurify';
+
 // Fetch and analyze emails
 // This function fetches emails from the Gmail API and analyzes them for suspicious content.
 // Referenced in: chrome.runtime.onInstalled, chrome.runtime.onStartup, chrome.alarms.onAlarm
@@ -38,7 +39,7 @@ function fetchAndAnalyzeEmails() {
   });
 }
 
-// Analyze emails (src/background.js)
+// Analyze emails
 // This function analyzes a list of emails for suspicious content and saves flagged emails to local storage and backend.
 // Referenced in: fetchAndAnalyzeEmails
 async function analyzeEmails(emails) {
@@ -88,8 +89,6 @@ async function analyzeEmails(emails) {
   }
 }
 
-
-
 // Save email data to the backend only if not already processed
 // This function saves email data to the backend if it has not been processed before.
 // Referenced in: analyzeEmails
@@ -121,7 +120,7 @@ async function saveEmailToBackend(emailData) {
 
 // Send email content to the backend for analysis
 // This function sends email content to the backend for analysis and returns whether it is flagged as suspicious.
-// Referenced in: analyzeEmailContent
+// Referenced in: analyzeEmailContent (utils.js)
 async function sendToBackendForAnalysis(text) {
   try {
     const response = await fetch('http://localhost:8080/api/analyze', {
@@ -139,6 +138,7 @@ async function sendToBackendForAnalysis(text) {
     return false;
   }
 }
+
 // Fetch email details
 // This function fetches detailed information about an email from the Gmail API.
 // Referenced in: fetchAndAnalyzeEmails
@@ -164,7 +164,6 @@ function fetchEmailDetails(token, messageId) {
     })
     .catch(error => console.error('Error fetching email details:', error));
 }
-
 
 // EVENT LISTENERS
 
