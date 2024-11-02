@@ -94,17 +94,17 @@ async function analyzeEmails(emails) {
 // Referenced in: analyzeEmails
 async function saveEmailToBackend(emailData) {
   const isProcessed = await isEmailProcessed(emailData.id);
-  if (isProcessed) {
-    console.log(`Email with ID ${emailData.id} is already processed. Skipping backend call.`);
-    return;
-  }
+  // if (isProcessed) {
+  //   console.log(`Email with ID ${emailData.id} is already processed. Skipping backend call.`);
+  //   return;
+  // }
 
   try {
-    const response = await fetch('http://localhost:8080/api/saveEmailAnalysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(emailData),
-    });
+const response = await fetch('http://localhost:8080/analysis/saveEmailAnalysis', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(emailData),
+});
 
     const result = await response.json();
     if (result.success) {
@@ -123,7 +123,7 @@ async function saveEmailToBackend(emailData) {
 // Referenced in: analyzeEmailContent (utils.js)
 async function sendToBackendForAnalysis(text) {
   try {
-    const response = await fetch('http://localhost:8080/api/analyze', {
+    const response = await fetch('http://localhost:8080/analysis/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -164,6 +164,9 @@ function fetchEmailDetails(token, messageId) {
     })
     .catch(error => console.error('Error fetching email details:', error));
 }
+
+
+
 
 // EVENT LISTENERS
 

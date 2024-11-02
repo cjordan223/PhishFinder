@@ -98,7 +98,7 @@ export default {
         async fetchMetrics() {
             try {
                 // Fetch email metrics from MongoDB
-                const response = await fetch(`http://localhost:8080/api/metrics/${this.timeRange}`);
+                const response = await fetch(`http://localhost:8080/metrics/${this.timeRange}`);
                 const data = await response.json();
 
                 this.metrics = {

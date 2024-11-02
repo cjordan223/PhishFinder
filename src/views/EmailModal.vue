@@ -56,6 +56,50 @@
                             </li>
                         </ul>
                     </div>
+                    <!-- Display Email Authentication Records -->
+                    <div v-if="dnsRecords" class="mt-4">
+                        <p><strong>Email Authentication Records:</strong></p>
+                        <ul>
+                            <li><strong>SPF:</strong> <span v-if="dnsRecords.spf">{{ dnsRecords.spf }}</span><span
+                                    v-else>No SPF record found</span></li>
+                            <li><strong>DKIM:</strong> <span v-if="dnsRecords.dkim">{{ dnsRecords.dkim }}</span><span
+                                    v-else>No DKIM record found</span></li>
+                            <li><strong>DMARC:</strong> <span v-if="dnsRecords.dmarc">{{ dnsRecords.dmarc }}</span><span
+                                    v-else>No DMARC record found</span></li>
+                            <li><strong>Summary:</strong> {{ dnsRecords.summary }}</li>
+                        </ul>
+                    </div>
+
+
+                    <!-- WHOIS Lookup Section -->
+                    <div class="mt-4">
+                        <input id="domainInput" v-model="domainInput" placeholder="Enter domain"
+                            class="border p-2 rounded" />
+                        <button @click="fetchWhoisData"
+                            class="ml-2 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg px-5 py-2.5">
+                            Lookup WHOIS
+                        </button>
+                        <pre id="whoisResult" class="mt-4 bg-gray-100 p-4 rounded">{{ whoisResult }}</pre>
+                    </div>
+                    <!-- Display WHOIS data -->
+                    <div v-if="whoisData">
+                        <h3>Domain Information</h3>
+                        <p><strong>Domain:</strong> {{ whoisData.domain.domain }}</p>
+                        <p><strong>Registrar:</strong> {{ whoisData.registrar.name }}</p>
+                        <p><strong>Registrant Organization:</strong> {{ whoisData.registrant.organization }}</p>
+                        <p><strong>Registrant Country:</strong> {{ whoisData.registrant.country }}</p>
+                        <p><strong>Creation Date:</strong> {{ formatDate(whoisData.domain.created_date) }}</p>
+                        <p><strong>Expiration Date:</strong> {{ formatDate(whoisData.domain.expiration_date) }}</p>
+                        <p><strong>Updated Date:</strong> {{ formatDate(whoisData.domain.updated_date) }}</p>
+                        <p><strong>Name Servers:</strong> {{ whoisData.domain.name_servers.join(', ') }}</p>
+                    </div>
+                    <div v-else-if="whoisLoading">
+                        <p>Loading WHOIS data...</p>
+                    </div>
+                    <div v-else-if="whoisError">
+                        <p>Error fetching WHOIS data: {{ whoisError }}</p>
+                    </div>
+
                     <!-- Display loading spinner if any API call is in progress -->
                     <div v-if="loading" class="flex items-center justify-center mt-4">
                         <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -78,6 +122,8 @@
                         Analyze for AI
                     </button>
                 </div>
+
+
             </div>
         </div>
     </div>
@@ -117,6 +163,12 @@ export default {
             aiAnalysisResult: null,  // Result of AI analysis
             loading: false,  // Loading state for API calls
             suspiciousKeywords: [],  // Suspicious keywords found in email
+            dnsRecords: null,  // DNS records for the domain
+            whoisData: null,
+            whoisLoading: false,
+            whoisError: null,
+            domainInput: '', //
+
         };
     },
     methods: {
@@ -146,7 +198,7 @@ export default {
             }
             this.loading = true;
             try {
-                const response = await fetch('http://localhost:8080/api/ai-analyze', {
+                const response = await fetch('http://localhost:8080/analysis/ai-analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: emailContent }),
@@ -187,7 +239,7 @@ export default {
             }
             this.loading = true;
             try {
-                const response = await fetch('http://localhost:8080/api/analyze', {
+                const response = await fetch('http://localhost:8080/analysis/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: this.email.body }),
@@ -208,7 +260,53 @@ export default {
             } finally {
                 this.loading = false;
             }
-        }
+        },
+        // Fetch DNS records for the domain
+        async fetchDNSRecords(domain) {
+            console.log(`Fetching DNS records for domain: ${domain}`);
+            try {
+                const response = await fetch(`http://localhost:8080/dns/dns-records/${domain}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch DNS records: ${response.statusText}`);
+                }
+                const data = await response.json();
+                console.log('Fetched DNS Records:', data); // Log the fetched DNS records
+                this.dnsRecords = data;
+            } catch (error) {
+                console.error('Error fetching DNS records:', error);
+                this.dnsRecords = null;
+            }
+        },
+        // Fetch WHOIS data for the domain
+        async fetchWhoisData() {
+            const domain = this.domainInput;
+            this.whoisLoading = true;
+            this.whoisError = null;
+            try {
+                const response = await fetch(`http://localhost:8080/whois/${domain}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch WHOIS data: ${response.statusText}`);
+                }
+                const data = await response.json();
+                this.whoisData = data;
+            } catch (error) {
+                this.whoisError = error.message;
+            } finally {
+                this.whoisLoading = false;
+            }
+        },
+        // Extract domain from email address
+        extractDomainFromEmail(email) {
+            const match = email.match(/@([\w.-]+)/);
+            return match ? match[1] : null;
+        },
+    },
+    watch: {
+        domainInput(newDomain) {
+            if (newDomain) {
+                this.fetchWhoisData();
+            }
+        },
     },
     mounted() {
         this.analyzeDomain();
@@ -216,6 +314,12 @@ export default {
 
         if (this.email.keywords) {
             this.suspiciousKeywords = Array.from(this.email.keywords);
+        }
+
+        // Fetch DNS records for the domain
+        const domain = this.extractDomainFromEmail(this.email.from);
+        if (domain) {
+            this.fetchDNSRecords(domain);
         }
 
         console.log('Mounted: Email Keywords:', Array.from(this.email.keywords || []));
