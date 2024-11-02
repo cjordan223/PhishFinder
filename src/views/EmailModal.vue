@@ -21,6 +21,12 @@
                     <p><strong>Date:</strong> {{ formatDate(email.date) || 'Unknown Date' }}</p>
                     <div class="email-body-content" v-html="sanitizeEmailBody(email.body)"></div>
 
+                    <!-- Display Email Headers -->
+                    <div v-if="emailHeaders" class="mt-4">
+                        <p><strong>Email Headers:</strong></p>
+                        <pre class="bg-gray-100 p-4 rounded">{{ emailHeaders }}</pre>
+                    </div>
+
                     <!-- Display AI Analysis Result -->
                     <div v-if="aiAnalysisResult !== null" class="mt-4">
                         <p><strong>AI Analysis:</strong> {{ aiAnalysisResult }}</p>
@@ -167,8 +173,8 @@ export default {
             whoisData: null,
             whoisLoading: false,
             whoisError: null,
-            domainInput: '', //
-
+            domainInput: '',
+            emailHeaders: null,  // Email headers
         };
     },
     methods: {
@@ -200,7 +206,9 @@ export default {
             try {
                 const response = await fetch('http://localhost:8080/analysis/ai-analyze', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({ text: emailContent }),
                 });
                 const result = await response.json();
@@ -241,7 +249,9 @@ export default {
             try {
                 const response = await fetch('http://localhost:8080/analysis/analyze', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({ text: this.email.body }),
                 });
                 const result = await response.json();
@@ -300,6 +310,51 @@ export default {
             const match = email.match(/@([\w.-]+)/);
             return match ? match[1] : null;
         },
+        // Fetch email headers using Gmail API
+        async fetchEmailHeaders() {
+            try {
+                // Send message to background script to fetch headers
+                const response = await new Promise((resolve, reject) => {
+                    chrome.runtime.sendMessage({
+                        action: 'fetchEmailDetails',
+                        messageId: this.email.id
+                    }, response => {
+                        if (chrome.runtime.lastError) {
+                            reject(chrome.runtime.lastError);
+                        } else if (response.error) {
+                            reject(new Error(response.error));
+                        } else {
+                            resolve(response);
+                        }
+                    });
+                });
+
+                // Format headers if they exist
+                if (response && response.payload && response.payload.headers) {
+                    this.emailHeaders = response.payload.headers
+                        .map(header => `${header.name}: ${header.value}`)
+                        .join('\n');
+                } else {
+                    throw new Error('No headers found in response');
+                }
+            } catch (error) {
+                console.error('Error fetching email headers:', error);
+                this.headersFetchError = error.message;
+                this.emailHeaders = null;
+            }
+        },
+        // Get authentication token
+        async getAuthToken() {
+            return new Promise((resolve, reject) => {
+                chrome.identity.getAuthToken({ interactive: true }, (token) => {
+                    if (chrome.runtime.lastError || !token) {
+                        reject(chrome.runtime.lastError);
+                    } else {
+                        resolve(token);
+                    }
+                });
+            });
+        },
     },
     watch: {
         domainInput(newDomain) {
@@ -308,7 +363,14 @@ export default {
             }
         },
     },
-    mounted() {
+    async mounted() {
+        try {
+            await this.fetchEmailHeaders();
+        } catch (error) {
+            console.error('Error during header fetch:', error);
+        }
+
+        // Execute other mounted logic
         this.analyzeDomain();
         this.testSafeBrowsing();
 
@@ -316,16 +378,13 @@ export default {
             this.suspiciousKeywords = Array.from(this.email.keywords);
         }
 
-        // Fetch DNS records for the domain
         const domain = this.extractDomainFromEmail(this.email.from);
         if (domain) {
             this.fetchDNSRecords(domain);
         }
-
-        console.log('Mounted: Email Keywords:', Array.from(this.email.keywords || []));
-        console.log('Mounted: Suspicious Keywords:', Array.from(this.suspiciousKeywords));
     }
 };
+
 </script>
 
 <style scoped>

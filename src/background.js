@@ -181,6 +181,35 @@ chrome.runtime.onInstalled.addListener(() => {
   fetchAndAnalyzeEmails();
 });
 
+// Message listener for email detail requests
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'fetchEmailDetails') {
+      chrome.identity.getAuthToken({ interactive: false }, async (token) => {
+          if (!token) {
+              sendResponse({ error: 'Failed to retrieve token' });
+              return;
+          }
+
+          try {
+              const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${request.messageId}?format=full`;
+              const response = await fetch(url, {
+                  headers: { Authorization: `Bearer ${token}` },
+              });
+              
+              const data = await response.json();
+              sendResponse(data);
+          } catch (error) {
+              console.error('Error fetching email details:', error);
+              sendResponse({ error: error.message });
+          }
+      });
+
+      // Return true to indicate we will send a response asynchronously
+      return true;
+  }
+});
+
+
 // On browser startup
 // This event listener is triggered when the browser starts up. It fetches and analyzes emails.
 // Referenced in: chrome.runtime.onStartup
