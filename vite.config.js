@@ -11,6 +11,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  define: {
+    'process.env.ALWAYS_PERFORM_DNS': JSON.stringify(process.env.ALWAYS_PERFORM_DNS || 'false'),
+  },
   css: {
     postcss: {
       plugins: [

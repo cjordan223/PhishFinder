@@ -1,359 +1,159 @@
 <template>
-  <div class="common-dimensions pt-24"> <!-- Adjusted padding top -->
-    <Header @logout="logout" />
+  <div class="min-h-screen bg-gradient-to-br from-primary-light to-primary-dark w-full">
+    <Header @logout="logout" class="fixed top-0 w-full z-10" />
 
-    <div class="max-w-4xl w-full mx-auto p-4 bg-white shadow-lg rounded-lg mt-24 email-page-background">
-      <div v-if="loading" class="text-center text-blue-500">Loading...</div>
-      <div v-if="error" class="text-center text-red-500">{{ errorMessage }}</div>
-      <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="nextPageDisabled"
-        @prevPage="prevPage" @nextPage="nextPage" @goToHome="goToHome" />
-      <ul v-if="!loading && paginatedEmails.length > 0" class="space-y-4">
-        <EmailListItem v-for="email in paginatedEmails" :key="email.id" :email="email" @open="openEmailModal" />
-      </ul>
-    </div>
+    <main class="w-full pt-20 pb-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 w-full">
+          <LoadingSpinner v-if="loading" class="my-8" />
+          <ErrorMessage v-if="error" :message="errorMessage" class="my-4" />
+
+          <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="isNextPageDisabled"
+            @prevPage="prevPage" @nextPage="nextPage" class="mb-6" />
+
+          <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailModal"
+            class="divide-y divide-gray-200" />
+
+          <EmptyState v-else-if="!loading && !error" class="py-12" />
+        </div>
+      </div>
+    </main>
   </div>
-  <EmailModal v-if="selectedEmail" :email="selectedEmail" :isFlaggedForKeywords="selectedEmail.isFlagged"
-    @close="closeEmailModal" />
+
+  <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
 </template>
 
-<script>
-import Header from './Header.vue';
-import EmailModal from '@/views/EmailModal.vue';
-import PaginationControls from './PaginationControls.vue';
-import EmailListItem from '@/views/EmailListItem.vue';
-import { SuspiciousWords, parseHeader } from '@/utils/utils';
-import { linkAnalysis } from '@/utils/utils.js';
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { emailHelpers, apiHelpers } from '@/utils/utils';
+import Header from '@/views/components/Header.vue';
+import EmailModal from '@/views//EmailModal.vue';
+import PaginationControls from '@/views/components/PaginationControls.vue';
+import EmailList from '@/views/EmailList.vue';
+import LoadingSpinner from '@/views/components/LoadingSpinner.vue';
+import ErrorMessage from '@/views/components/ErrorMessage.vue';
+import EmptyState from '@/views/components/EmptyState.vue';
 
-export default {
-  components: {
-    Header,
-    EmailModal,
-    PaginationControls,
-    EmailListItem,
-  },
-  data() {
-    return {
-      emails: [],
-      paginatedEmails: [],
-      cache: {},
-      loading: false,
-      error: false,
-      errorMessage: '',
-      emailLimit: 20,
-      maxEmails: 200,
-      currentPage: 1,
-      emailsPerPage: 5,
-      selectedEmail: null,
-      nextPageToken: null,
-      backgroundFetching: false,
-      totalFetchedEmails: 0,
-    };
-  },
-  mounted() {
-    this.fetchEmails();
-  },
-  methods: {
-    async fetchEmails(pageToken = null, isBackground = false) {
-      if (!pageToken && this.emails.length > 0 && !isBackground) {
-        this.paginateEmails();
-        return;
-      }
+const router = useRouter();
+const emails = ref([]);
+const paginatedEmails = ref([]);
+const loading = ref(false);
+const error = ref(false);
+const errorMessage = ref('');
+const selectedEmail = ref(null);
+const currentPage = ref(1);
+const emailsPerPage = 5;
+const nextPageToken = ref(null);
+const cache = new Map();
 
-      this.loading = !isBackground;
-      chrome.identity.getAuthToken({ interactive: true }, async (token) => {
-        if (!token) {
-          this.handleError('Unable to get the token');
-          this.loading = false;
-          return;
-        }
+const isNextPageDisabled = computed(() => {
+  return !nextPageToken.value && currentPage.value * emailsPerPage >= emails.value.length;
+});
 
-        try {
-          await this.fetchEmailList(token, pageToken);
-          if (!isBackground) {
-            this.loading = false;
-            this.paginateEmails();
-          }
-          if (this.totalFetchedEmails < this.maxEmails && this.nextPageToken && !this.backgroundFetching) {
-            this.lazyLoadEmails(token);
-          }
-        } catch (err) {
-          this.handleError('Failed to fetch emails');
-          this.loading = false;
-        }
-      });
-    },
+async function fetchEmails(pageToken = null) {
+  loading.value = true;
+  error.value = false;
+  errorMessage.value = '';
 
-    async fetchEmailList(token, pageToken = null) {
-      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-      url.searchParams.append('maxResults', this.emailLimit.toString());
-      url.searchParams.append('labelIds', 'INBOX');
-      if (pageToken) {
-        url.searchParams.append('pageToken', pageToken);
-      }
+  try {
+    const token = await apiHelpers.getAuthToken();
+    const result = await emailHelpers.fetchEmailBatch(token, pageToken);
 
-      try {
-        const response = await fetch(url.toString(), {
-          headers: { Authorization: `Bearer ${token}` },
+    if (result && result.emails) {
+      const processedEmails = await Promise.all(result.emails.map(async email => {
+        const fullEmail = await emailHelpers.fetchEmailDetails(token, email.id);
+
+        console.log('Full email details:', {
+          id: fullEmail.id,
+          security: fullEmail.security,
+          raw: fullEmail
         });
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(`Failed to fetch email list: ${data.error.message}`);
-        }
-
-        if (data.messages) {
-          const fetchPromises = data.messages.map((msg) => this.fetchEmailDetails(token, msg.id));
-          const fetchedEmails = await Promise.all(fetchPromises);
-          this.emails = [...this.emails, ...fetchedEmails.filter((email) => email)];
-          this.totalFetchedEmails += fetchedEmails.length;
-          this.nextPageToken = data.nextPageToken || null;
-
-          chrome.storage.local.get(['flaggedEmails'], (result) => {
-            if (result.flaggedEmails) {
-              this.emails = this.emails.map(email => {
-                const flaggedEmail = result.flaggedEmails.find(f => f.id === email.id);
-                if (flaggedEmail) {
-                  email.isFlagged = flaggedEmail.isFlagged;
-                }
-                return email;
-              });
-            }
-
-            this.analyzeEmails(this.emails);
-            this.paginateEmails();
-          });
-        } else {
-          this.nextPageToken = null;
-        }
-      } catch (error) {
-        console.error('Error fetching email list:', error);
-        this.handleError('Error fetching email list');
-      }
-    },
-
-    analyzeEmails(emails) {
-      emails.forEach((email) => {
-        // Only analyze if not already analyzed
-        if (email.isFlagged === undefined) {
-          const result = SuspiciousWords(email);
-
-          // Add debug logging
-          console.log('Analyzing email:', {
-            subject: email.subject,
-            result: result,
-            text: `${email.subject || ''} ${email.snippet || ''}`
-          });
-
-          // Only set flags if keywords were actually found
-          if (result.keywords && result.keywords.length > 0) {
-            email.isFlagged = true;
-            email.keywords = result.keywords;
-          } else {
-            email.isFlagged = false;
-            email.keywords = [];
-          }
-        }
-
-        // Check for link risks if not already set
-        if (!email.linkRisks) {
-          email.linkRisks = linkAnalysis(email.body) || [];
-        }
-      });
-    },
-
-    async lazyLoadEmails(token) {
-      if (!this.nextPageToken || this.totalFetchedEmails >= this.maxEmails) return;
-
-      this.backgroundFetching = true;
-
-      try {
-        await this.fetchEmailList(token, this.nextPageToken);
-        this.backgroundFetching = false;
-        if (this.totalFetchedEmails < this.maxEmails && this.nextPageToken) {
-          this.lazyLoadEmails(token);
-        }
-      } catch {
-        this.backgroundFetching = false;
-      }
-    },
-
-    async fetchEmailDetails(token, messageId) {
-      const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`;
-
-      try {
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const email = await response.json();
-        if (!email.payload || !email.payload.headers) {
-          return null;
-        }
-
-        const body = this.getEmailBody(email.payload);
 
         return {
-          id: email.id,
-          subject: parseHeader(email.payload.headers, 'Subject'),
-          from: parseHeader(email.payload.headers, 'From'),
-          date: parseHeader(email.payload.headers, 'Date'),
-          snippet: email.snippet,
-          body,
-        };
-      } catch (error) {
-        console.error('Error fetching email:', error);
-        return null;
-      }
-    },
-
-    decodeBase64Url(data) {
-      data = data.replace(/-/g, '+').replace(/_/g, '/');
-      while (data.length % 4) {
-        data += '=';
-      }
-
-      try {
-        const decodedData = atob(data);
-        return decodeURIComponent(escape(decodedData));
-      } catch (e) {
-        console.error('Failed to decode base64url data', e);
-        return '';
-      }
-    },
-
-    getEmailBody(payload) {
-      let body = '';
-
-      const getBody = (parts) => {
-        for (const part of parts) {
-          if (part.mimeType === 'text/html' && part.body && part.body.data) {
-            body = this.decodeBase64Url(part.body.data);
-            return true;
-          } else if (part.parts) {
-            if (getBody(part.parts)) {
-              return true;
+          ...fullEmail,
+          security: {
+            authentication: {
+              spf: fullEmail.security?.authentication?.spf,
+              dkim: fullEmail.security?.authentication?.dkim,
+              dmarc: fullEmail.security?.authentication?.dmarc,
+              summary: fullEmail.security?.authentication?.summary
+            },
+            analysis: {
+              isFlagged: fullEmail.security?.analysis?.isFlagged || false,
+              suspiciousKeywords: fullEmail.security?.analysis?.suspiciousKeywords || [],
+              linkRisks: fullEmail.security?.analysis?.linkRisks || [],
+              safeBrowsingResult: fullEmail.security?.analysis?.safeBrowsingResult || []
             }
-          } else if (part.mimeType === 'text/plain' && part.body && part.body.data) {
-            body = this.decodeBase64Url(part.body.data);
           }
-        }
-        return false;
-      };
+        };
+      }));
 
-      if (payload.parts) {
-        getBody(payload.parts);
-      } else if (payload.body && payload.body.data) {
-        body = this.decodeBase64Url(payload.body.data);
-      }
+      emails.value = [...emails.value, ...processedEmails];
+      nextPageToken.value = result.nextPageToken;
+      paginateEmails();
+    }
+  } catch (err) {
+    console.error('Error fetching emails:', err);
+    error.value = true;
+    errorMessage.value = err.message;
+  } finally {
+    loading.value = false;
+  }
+}
 
-      return body || 'No body content available.';
-    },
+function paginateEmails() {
+  const startIndex = (currentPage.value - 1) * emailsPerPage;
+  const endIndex = startIndex + emailsPerPage;
 
-    sanitizeEmailBody(body) {
-      return body.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/&nbsp;/g, ' ');
-    },
+  if (cache.has(currentPage.value)) {
+    paginatedEmails.value = cache.get(currentPage.value);
+  } else {
+    paginatedEmails.value = emails.value.slice(startIndex, endIndex);
+    cache.set(currentPage.value, paginatedEmails.value);
+  }
+}
 
-    paginateEmails() {
-      if (this.cache[this.currentPage]) {
-        this.paginatedEmails = this.cache[this.currentPage];
-      } else {
-        const startIndex = (this.currentPage - 1) * this.emailsPerPage;
-        const endIndex = startIndex + this.emailsPerPage;
-        this.paginatedEmails = this.emails.slice(startIndex, endIndex);
-        this.cacheEmails(this.paginatedEmails);
-      }
-    },
+function nextPage() {
+  if (currentPage.value * emailsPerPage < emails.value.length) {
+    currentPage.value++;
+    paginateEmails();
+  } else if (nextPageToken.value) {
+    fetchEmails(nextPageToken.value);
+  }
+}
 
-    cacheEmails(emails) {
-      if (!this.cache[this.currentPage]) {
-        this.cache[this.currentPage] = emails;
-      }
-    },
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    paginateEmails();
+  }
+}
 
-    nextPage() {
-      if (!this.nextPageDisabled) {
-        if (this.currentPage * this.emailsPerPage < this.emails.length) {
-          this.currentPage++;
-          this.paginateEmails();
-        } else if (this.nextPageToken) {
-          this.fetchEmails(this.nextPageToken);
-        }
-      }
-    },
+function openEmailModal(email) {
+  selectedEmail.value = email;
+}
 
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--;
-        this.paginateEmails();
-      }
-    },
+function closeEmailModal() {
+  selectedEmail.value = null;
+}
 
-    goToHome() {
-      this.currentPage = 1;
-      this.paginateEmails();
-    },
+function logout() {
+  chrome.storage.local.set({ loggedOut: true }, () => {
+    router.push('/login');
+  });
+}
 
-    formatDate(date) {
-      const options = {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      };
-      return new Date(date).toLocaleDateString(undefined, options);
-    },
+onMounted(() => {
+  fetchEmails();
+  console.log("Paginated emails:", paginatedEmails.value); // Log paginated emails
 
-    handleError(message) {
-      this.loading = false;
-      this.error = true;
-      this.errorMessage = message;
-    },
-    openEmailModal(email) {
-      const result = SuspiciousWords(email);
-      console.log('Modal opening with analysis:', {
-        subject: email.subject,
-        result: result
-      });
-
-      this.selectedEmail = {
-        ...email,
-        isFlagged: result.keywords && result.keywords.length > 0,
-        keywords: result.keywords || []
-      };
-    },
-    closeEmailModal() {
-      this.selectedEmail = null;
-    },
-    logout() {
-      chrome.storage.local.set({ loggedOut: true }, () => {
-        this.$router.push('/login');
-      });
-    },
-  },
-
-  computed: {
-    nextPageDisabled() {
-      return (
-        this.currentPage * this.emailsPerPage >= this.emails.length &&
-        !this.nextPageToken
-      );
-    },
-  },
-};
+});
 </script>
 
 <style scoped>
-.loading-spinner,
-.error-message,
-.no-emails-message {
-  text-align: center;
-  width: 100%;
-}
-
-.common-dimensions {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.bg-gradient {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);
 }
 </style>
