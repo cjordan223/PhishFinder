@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   define: {
-    'process.env.ALWAYS_PERFORM_DNS': JSON.stringify(process.env.ALWAYS_PERFORM_DNS || 'false'),
+    'process.env.ALWAYS_PERFORM_DNS': JSON.stringify(process.env.ALWAYS_PERFORM_DNS || 'true'),
   },
   css: {
     postcss: {

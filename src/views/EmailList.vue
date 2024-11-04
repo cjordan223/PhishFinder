@@ -1,12 +1,11 @@
 <template>
     <ul class="space-y-4">
-        <EmailListItem v-for="email in emails" :key="email.id" :email="normalizeEmail(email)"
-            @open="$emit('open', normalizeEmail(email))" />
+        <EmailListItem v-for="email in normalizedEmails" :key="email.id" :email="email" @open="$emit('open', email)" />
     </ul>
 </template>
 
 <script setup>
-import { defineProps, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import EmailListItem from './EmailListItem.vue';
 import { emailHelpers } from '@/utils/utils';
 
@@ -19,55 +18,67 @@ const props = defineProps({
 
 const emit = defineEmits(['open']);
 
-// Function to normalize the email object structure
-function normalizeEmail(email) {
-    console.log('Normalizing email with security:', email.security);
+const normalizedEmails = computed(() => {
+    return props.emails.map(email => normalizeEmail(email));
+});
 
-    if (email.content?.body && !email.payload) {
+function normalizeEmail(email) {
+    console.log('Email before normalization:', email);
+    console.log('Email structure check:', {
+        hasContent: !!email.content,
+        hasSecurity: !!email.security,
+        hasBody: !!email.content?.body,
+        hasPayload: !!email.payload
+    });
+
+    // If the email is already normalized, return it as is
+    if (email.content?.body && email.security) {
+        console.log('Email already normalized, keeping security:', email.security);
         return email;
     }
 
-    const body = emailHelpers.getEmailBody(email.payload);
+    const body = email.content?.body || emailHelpers.getEmailBody(email.payload);
 
-    return {
+    const normalizedEmail = {
         id: email.id,
-        metadata: {
+        metadata: email.metadata || {
             subject: email.payload?.headers?.find(h => h.name.toLowerCase() === 'subject')?.value || 'No Subject',
             date: email.payload?.headers?.find(h => h.name.toLowerCase() === 'date')?.value,
             snippet: email.snippet || 'No Snippet',
             labels: email.labelIds || []
         },
-        sender: {
+        sender: email.sender || {
             address: email.payload?.headers?.find(h => h.name.toLowerCase() === 'from')?.value || '',
             displayName: '',
             domain: ''
         },
-        content: {
+        content: email.content || {
             body: body || '',
             sanitizedBody: emailHelpers.sanitizeEmailBody(body || ''),
             urls: emailHelpers.extractUrlsFromEmail(body || ''),
             rawPayload: email.payload
         },
-        security: {
-            authentication: {
-                spf: email.security?.authentication?.spf || null,
-                dkim: email.security?.authentication?.dkim || null,
-                dmarc: email.security?.authentication?.dmarc || null,
-                summary: email.security?.authentication?.summary || null
-            },
-            analysis: {
-                isFlagged: email.security?.analysis?.isFlagged || false,
-                suspiciousKeywords: email.security?.analysis?.suspiciousKeywords || [],
-                linkRisks: email.security?.analysis?.linkRisks || [],
-                safeBrowsingResult: email.security?.analysis?.safeBrowsingResult || []
-            }
-        }
+        security: email.security // Preserve the security object
     };
+
+    // Debug logs
+    console.log('Normalized email with security:', normalizedEmail);
+    console.log('Security object:', normalizedEmail.security);
+
+    return normalizedEmail;
 }
 
 onMounted(() => {
-    const normalizedEmails = props.emails.map(normalizeEmail);
-    console.log("Normalized Emails:", normalizedEmails);
-    console.log("Sample email body:", normalizedEmails[0]?.content?.body?.substring(0, 100));
+    console.log("Normalized Emails:", normalizedEmails.value);
+    if (normalizedEmails.value.length > 0) {
+        console.log("Sample email body:", normalizedEmails.value[0]?.content?.body?.substring(0, 100));
+        console.log("Sample email security:", normalizedEmails.value[0]?.security);
+    }
 });
 </script>
+
+<style scoped>
+.space-y-4> :not([hidden])~ :not([hidden]) {
+    margin-top: 1rem;
+}
+</style>

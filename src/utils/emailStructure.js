@@ -21,22 +21,10 @@ export const createEmailObject = (rawEmail) => {
   const from = headers.find(h => h.name.toLowerCase() === 'from')?.value || '';
   const senderInfo = emailHelpers.parseSender(from);
 
-  // Get body content with detailed logging
-  console.log('Extracting body from payload:', {
-    mimeType: rawEmail.payload.mimeType,
-    hasBody: !!rawEmail.payload.body,
-    hasParts: !!rawEmail.payload.parts,
-    partsCount: rawEmail.payload.parts?.length
-  });
-
+ 
   const body = emailHelpers.getEmailBody(rawEmail.payload);
   
-  // Log the extracted content
-  console.log('Body extraction results:', {
-    bodyLength: body?.length,
-    bodyPreview: body?.substring(0, 100),
-    hasContent: !!body
-  });
+ 
 
   const emailObject = {
     id: rawEmail.id,

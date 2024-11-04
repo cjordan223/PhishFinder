@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import AuthenticationBadge from './components/AuthenticationBadge.vue';
 import RiskBadge from './components/RiskBadge.vue';
 import UrlStatusIcon from './components/UrlStatusIcon.vue';
@@ -7,27 +7,47 @@ import UrlStatusIcon from './components/UrlStatusIcon.vue';
 const props = defineProps({
     authentication: {
         type: Object,
-        default: () => ({
-            spf: null,
-            dkim: null,
-            dmarc: null,
-            summary: null
-        })
+        required: true,
+        default: () => ({})
     },
     analysis: {
         type: Object,
-        default: () => ({
-            isFlagged: false,
-            suspiciousKeywords: [],
-            linkRisks: [],
-            safeBrowsingResult: []
-        })
+        required: true,
+        default: () => ({})
     },
     urls: {
         type: Array,
         default: () => []
     }
 });
+
+// Add debug logging
+console.log('Authentication data:', props.authentication);
+
+const getAuthStatus = (type) => {
+    if (!props.authentication?.summary) {
+        console.warn('No authentication summary found');
+        return null;
+    }
+
+    const summary = props.authentication.summary;
+    console.log(`Checking ${type} status from summary:`, summary);
+
+    const match = summary.match(new RegExp(`${type}: (Pass|Fail)`));
+    const status = match ? match[1].toLowerCase() : null;
+    console.log(`${type} status:`, status);
+    return status;
+};
+
+const getAuthTooltip = (type) => {
+    if (!props.authentication) return 'Not available';
+    const values = {
+        spf: props.authentication.spf,
+        dkim: props.authentication.dkim,
+        dmarc: props.authentication.dmarc
+    };
+    return `${type}: ${values[type.toLowerCase()] || 'Not available'}`;
+};
 
 const suspiciousKeywords = computed(() => {
     return props.analysis?.suspiciousKeywords?.map(keyword => ({
@@ -36,23 +56,6 @@ const suspiciousKeywords = computed(() => {
         location: keyword.location
     })) || [];
 });
-
-const authenticationStatus = computed(() => {
-    return {
-        spf: props.authentication?.summary?.includes('SPF: Pass') ? 'pass' : 'fail',
-        dkim: props.authentication?.summary?.includes('DKIM: Pass') ? 'pass' : 'fail',
-        dmarc: props.authentication?.summary?.includes('DMARC: Pass') ? 'pass' : 'fail'
-    };
-});
-
-function getAuthTooltip(type) {
-    const tooltips = {
-        spf: `Sender Policy Framework: ${props.authentication?.spf || 'Not available'}`,
-        dkim: `DKIM: ${props.authentication?.dkim || 'Not available'}`,
-        dmarc: `DMARC: ${props.authentication?.dmarc || 'Not available'}`
-    };
-    return tooltips[type];
-}
 
 function getUrlStatus(url) {
     if (props.analysis?.safeBrowsingResult?.some(result => result.url === url)) {
@@ -63,16 +66,17 @@ function getUrlStatus(url) {
 </script>
 
 <template>
-    <div class="space-y-4 bg-gray-50 p-4 rounded-lg">
-        <h3 class="text-lg font-medium text-gray-900">Security Analysis</h3>
+    <div class="security-analysis p-4 bg-gray-50 rounded-lg">
+        <!-- Authentication Badges -->
+        <div class="flex space-x-2 mb-4">
+            <AuthenticationBadge label="SPF" :status="getAuthStatus('SPF')" :tooltip="getAuthTooltip('SPF')" />
+            <AuthenticationBadge label="DKIM" :status="getAuthStatus('DKIM')" :tooltip="getAuthTooltip('DKIM')" />
+            <AuthenticationBadge label="DMARC" :status="getAuthStatus('DMARC')" :tooltip="getAuthTooltip('DMARC')" />
+        </div>
 
         <!-- Risk Level and Authentication -->
         <div class="flex items-center space-x-4">
             <RiskBadge :isFlagged="analysis?.isFlagged || false" />
-            <div class="flex space-x-2">
-                <AuthenticationBadge v-for="(status, type) in authenticationStatus" :key="type" :type="type"
-                    :status="status" :tooltip="getAuthTooltip(type)" />
-            </div>
         </div>
 
         <!-- Suspicious Keywords -->

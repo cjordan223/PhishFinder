@@ -33,7 +33,6 @@ export const emailHelpers = {
     }
 
     // Log the payload structure for debugging
-    this._logPayloadStructure(payload);
 
     // Try to get content from parts first
     if (payload.parts) {
@@ -86,15 +85,6 @@ export const emailHelpers = {
         .replace(/&#39;/g, "'")
         .replace(/\n\s*\n/g, '\n')
         .trim();
-  },
-
-  _logPayloadStructure(payload) {
-    console.log('Processing email payload:', {
-        mimeType: payload.mimeType,
-        hasBody: !!payload.body,
-        hasParts: !!payload.parts,
-        partsLength: payload.parts?.length
-    });
   },
 
   sanitizeEmailBody(body) {

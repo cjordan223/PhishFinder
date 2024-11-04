@@ -64,29 +64,34 @@ async function fetchEmails(pageToken = null) {
       const processedEmails = await Promise.all(result.emails.map(async email => {
         const fullEmail = await emailHelpers.fetchEmailDetails(token, email.id);
 
-        console.log('Full email details:', {
-          id: fullEmail.id,
-          security: fullEmail.security,
-          raw: fullEmail
-        });
+        console.log('Raw email before processing:', fullEmail);
 
-        return {
-          ...fullEmail,
-          security: {
-            authentication: {
-              spf: fullEmail.security?.authentication?.spf,
-              dkim: fullEmail.security?.authentication?.dkim,
-              dmarc: fullEmail.security?.authentication?.dmarc,
-              summary: fullEmail.security?.authentication?.summary
-            },
-            analysis: {
-              isFlagged: fullEmail.security?.analysis?.isFlagged || false,
-              suspiciousKeywords: fullEmail.security?.analysis?.suspiciousKeywords || [],
-              linkRisks: fullEmail.security?.analysis?.linkRisks || [],
-              safeBrowsingResult: fullEmail.security?.analysis?.safeBrowsingResult || []
-            }
-          }
+        // Preserve the original security data structure
+        const processedEmail = {
+          id: fullEmail.id,
+          content: {
+            body: emailHelpers.getEmailBody(fullEmail.payload),
+            sanitizedBody: emailHelpers.sanitizeEmailBody(emailHelpers.getEmailBody(fullEmail.payload)),
+            urls: emailHelpers.extractUrlsFromEmail(emailHelpers.getEmailBody(fullEmail.payload)),
+            rawPayload: fullEmail.payload
+          },
+          metadata: {
+            subject: fullEmail.payload?.headers?.find(h => h.name.toLowerCase() === 'subject')?.value || 'No Subject',
+            date: fullEmail.payload?.headers?.find(h => h.name.toLowerCase() === 'date')?.value,
+            snippet: fullEmail.snippet || 'No Snippet',
+            labels: fullEmail.labelIds || []
+          },
+          sender: {
+            address: fullEmail.payload?.headers?.find(h => h.name.toLowerCase() === 'from')?.value || '',
+            displayName: '',
+            domain: ''
+          },
+          raw: fullEmail,
+          security: fullEmail.security
         };
+
+        console.log('Processed email with security:', processedEmail);
+        return processedEmail;
       }));
 
       emails.value = [...emails.value, ...processedEmails];

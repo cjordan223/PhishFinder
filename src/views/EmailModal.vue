@@ -27,16 +27,20 @@
                 </div>
 
                 <!-- Security Analysis -->
-                <SecurityAnalysis v-if="email.security" :authentication="email.security.authentication"
-                    :analysis="email.security.analysis" :urls="email.content?.urls || []" />
+                <SecurityAnalysis v-if="email?.security" :authentication="email.security.authentication"
+                    :analysis="email.security.analysis" :urls="email.content?.urls" />
+
+                <!-- Add WhoisLookup Component -->
+                <WhoisLookup v-if="showWhois" :domain="normalizedSender?.domain" ref="whoisLookup" />
             </div>
 
             <!-- Footer -->
             <div class="flex justify-end p-6 border-t bg-gray-50 rounded-b-xl">
-                <button @click="triggerDnsLookup"
-                    class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors mr-2"
-                    :disabled="!email.sender?.domain">
-                    Refresh DNS
+                <button @click="toggleWhois"
+                    class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors mr-2 flex items-center space-x-2"
+                    :disabled="!normalizedSender?.domain">
+                    <LoadingSpinner v-if="isLoading" class="w-5 h-5" />
+                    <span class="ml-2">{{ showWhois ? 'Hide WHOIS' : 'Show WHOIS' }}</span>
                 </button>
                 <button @click="close"
                     class="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
@@ -48,12 +52,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { emailHelpers, apiHelpers } from '@/utils/utils';
 import SecurityAnalysis from './SecurityAnalysis.vue';
-import WhoisLookup from './WhoisLookup.vue';
 import EmailHeader from './components/EmailHeader.vue';
 import CloseIcon from './icons/CloseIcon.vue';
+import LoadingSpinner from './components/LoadingSpinner.vue';
+import WhoisLookup from './WhoisLookup.vue';
 
 const props = defineProps({
     email: {
@@ -66,33 +71,57 @@ const emit = defineEmits(['close']);
 
 // Computed properties
 const formattedDate = computed(() => emailHelpers.formatDate(props.email.metadata?.date));
-const normalizedSender = computed(() => ({
-    address: props.email.sender?.address || '',
-    displayName: props.email.sender?.displayName || 'Unknown Sender',
-    domain: props.email.sender?.domain || ''
-}));
-
-const securityAnalysis = computed(() => ({
-    isFlagged: props.email.security?.analysis?.isFlagged || false,
-    suspiciousKeywords: props.email.security?.analysis?.suspiciousKeywords || [],
-    linkRisks: props.email.security?.analysis?.linkRisks || [],
-    safeBrowsingResult: props.email.security?.analysis?.safeBrowsingResult || []
-}));
-
-// Lifecycle hooks
-onMounted(() => {
-    console.log('Email Modal Content:', {
-        body: props.email.content?.body,
-        security: props.email.security,
-        sender: props.email.sender
-    });
+const normalizedSender = computed(() => {
+    const senderInfo = emailHelpers.parseSender(props.email?.sender?.address || '');
+    console.log('Parsed sender info:', senderInfo); // Debug log
+    return senderInfo;
 });
+
+const securityData = computed(() => ({
+    authentication: props.email?.security?.authentication || {},
+    analysis: props.email?.security?.analysis || {},
+    urls: props.email?.content?.urls || []
+}));
 
 // Methods
 function close() {
     emit('close');
 }
 
+const isLoading = ref(false);
+
+
+// Lifecycle hooks
+// debug props with logging
+onMounted(() => {
+    console.log('Email Modal Content:', {
+        sender: normalizedSender.value,
+        security: securityData.value
+    });
+});
+
+const whoisLookup = ref(null);
+const showWhois = ref(false);
+
+const toggleWhois = async () => {
+    if (!showWhois.value) {
+        showWhois.value = true;
+        // Wait for component to mount
+        await nextTick();
+        // Trigger the fetch
+        if (whoisLookup.value) {
+            await whoisLookup.value.fetchWhoisData();
+        }
+    } else {
+        showWhois.value = false;
+    }
+};
+
+// Debug logs
+watch(() => showWhois.value, (newVal) => {
+    console.log('showWhois changed:', newVal);
+    console.log('normalizedSender:', normalizedSender.value);
+});
 </script>
 
 <style scoped>
