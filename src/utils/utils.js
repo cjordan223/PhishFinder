@@ -1,161 +1,256 @@
-// utils.js
+import DOMPurify from 'dompurify';
 
-// Analyze if email contains suspicious words
-// This function checks if the email contains any phishing keywords and flags the email if it does.
-// Referenced in: analyzeEmailContent (background.js)
-export function SuspiciousWords(email) {
-  const phishingKeywords = [
-    // List of phishing keywords
-  ];
+// Initialize DOMPurify with the extension's window object if available
+const purify = typeof window !== 'undefined' ? DOMPurify(window) : {
+  sanitize: (html) => html // Fallback for non-browser environments
+};
+
+// Email Processing Helpers
+export const emailHelpers = {
+  decodeBase64Url(data) {
+    data = data.replace(/-/g, '+').replace(/_/g, '/');
+    while (data.length % 4) data += '=';
+    try {
+      return decodeURIComponent(escape(atob(data)));
+    } catch (e) {
+      console.error('Failed to decode base64url data', e);
+      return '';
+    }
+  },
+  formatDate(date) {
+    if (!date) return 'Unknown Date';
+    const options = {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    };
+    return new Date(date).toLocaleDateString(undefined, options);
+  },
+
+  getEmailBody(payload) {
+    if (!payload) {
+        console.warn('No payload provided');
+        return '';
+    }
+
+    // Log the payload structure for debugging
+
+    // Try to get content from parts first
+    if (payload.parts) {
+        const bodyContent = this._getBodyFromParts(payload.parts);
+        if (bodyContent) return bodyContent;
+    }
+
+    // If no parts but has body data directly
+    if (payload.body?.data) {
+        return this._decodeAndFormatBody(payload);
+    }
+
+    console.warn('No readable body content found in payload');
+    return '';
+  },
+
+  _getBodyFromParts(parts) {
+    // Try plain text first
+    const textPart = parts.find(part => part.mimeType === 'text/plain');
+    if (textPart) return this._decodeAndFormatBody(textPart);
+
+    // Then try HTML
+    const htmlPart = parts.find(part => part.mimeType === 'text/html');
+    if (htmlPart) return this._decodeAndFormatBody(htmlPart);
+
+    // Check nested parts
+    for (const part of parts) {
+        if (part.parts) {
+            const nestedBody = this.getEmailBody(part);
+            if (nestedBody) return nestedBody;
+        }
+    }
+    return null;
+  },
+
+  _decodeAndFormatBody(part) {
+    if (!part.body?.data) return '';
+    const decoded = this.decodeBase64Url(part.body.data);
+    return part.mimeType === 'text/html' ? this._convertHtmlToText(decoded) : decoded;
+  },
+
+  _convertHtmlToText(html) {
+    return html
+        .replace(/<[^>]+>/g, '\n')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\n\s*\n/g, '\n')
+        .trim();
+  },
+
+  sanitizeEmailBody(body) {
+    return purify.sanitize(body, { USE_PROFILES: { html: true } });
+  },
+
+  parseSender(from) {
+    // Clean up any double wrapping of angle brackets
+    from = from.replace(/^<(.+)>$/, '$1');
+    
+    // Match either "Name <email>" or just "email" format
+    const emailMatch = from.match(/<([^>]+)>/) || from.match(/([^\s<>]+@[^\s<>]+)/);
+    const email = emailMatch ? emailMatch[1] : from;
+    
+    // Get display name: everything before the email, or email username if no display name
+    let displayName = from.split('<')[0].trim();
+    if (!displayName || displayName === email) {
+        displayName = email.split('@')[0]; // fallback to email username
+    }
+    
+    // Clean any remaining angle brackets from display name
+    displayName = displayName.replace(/[<>]/g, '').trim();
+    
+    const domain = email.split('@')[1] || '';
+
+    return {
+        address: email.trim(),
+        displayName,
+        domain
+    };
+  },
+
+  extractUrlsFromEmail(body) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return body.match(urlRegex) || [];
+  },
+
+  async fetchEmailDetails(token, messageId) {
+    try {
+      const response = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
   
-  const emailText = `${email.subject || ''} ${email.snippet || ''} ${email.body || ''}`.toLowerCase();
-  const foundKeywords = [];
-
-  // Find all matching keywords
-  phishingKeywords.forEach(keyword => {
-    if (emailText.includes(keyword.toLowerCase())) {
-      foundKeywords.push(keyword);
-    }
-  });
-
-  // Update the email object and return both flag and keywords
-  email.isFlagged = foundKeywords.length > 0;
-  email.keywords = foundKeywords;  // Store the found keywords
-
-  return {
-    isFlagged: foundKeywords.length > 0,
-    keywords: foundKeywords
-  };
-}
-
-// Extract header value by name
-// This function extracts the value of a specific header from the email headers.
-// Referenced in: fetchEmailDetails (background.js)
-export function parseHeader(headers, name) {
-  const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
-  return header ? header.value : 'Unknown';
-}
-
-// Extract URLs from email content
-// This function extracts all URLs from the email content using a regular expression.
-// Referenced in: EmailModal.vue (testSafeBrowsing, analyzeDomain)
-export function extractUrlsFromEmail(emailContent) {
-  const urlPattern = /https?:\/\/[^\s]+/g;
-  return emailContent.match(urlPattern) || [];
-}
-
-// Analyze links in email content for mismatched display text and detect IP-based URLs
-// This function analyzes the email body for mismatched links and IP-based URLs, returning any risks found.
-// Referenced in: EmailModal.vue (analyzeDomain), analyzeEmailContent (background.js), analyzeDomain (utils.js)
-export function linkAnalysis(emailBody) {
-  const risks = [];
-  const anchorTagPattern = /<a\s+(?:[^>]*?\s+)?href=["'](https?:\/\/[^"']+)["'][^>]*>(.*?)<\/a>/gi;
-  let match;
-
-  while ((match = anchorTagPattern.exec(emailBody)) !== null) {
-    const actualUrl = match[1];  // The URL in the href attribute
-    const displayText = match[2]; // The text displayed in the link
-
-    // Check if the display text looks like a URL but does not match the actual URL
-    if (
-      displayText.match(/https?:\/\/|www\./) && 
-      !actualUrl.includes(displayText.replace(/https?:\/\//, '').replace('www.', '').split('/')[0])
-    ) {
-      risks.push(`Mismatched link: display text "${displayText}" does not match URL "${actualUrl}"`);
-    }
-
-    // Check for IP-based URLs in the href
-    if (/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(actualUrl)) {
-      risks.push(`IP address URL detected: ${actualUrl}`);
-    }
-  }
-
-  return risks;
-}
-
-// Analyze the email and check for any suspicious characteristics
-// This function combines various checks (suspicious words, backend analysis, link analysis) to flag the email.
-// Referenced in: Not explicitly referenced in the provided context
-export async function analyzeEmailContent(email, sendToBackendForAnalysis) {
-  const isFlaggedLocally = SuspiciousWords(email);
-  const isFlaggedByBackend = await sendToBackendForAnalysis(email.body);
-  const linkRisks = linkAnalysis(email.body);
-  const isFlaggedByLinks = linkRisks.length > 0;
-
-  // Combine flags from all sources
-  const isFlagged = isFlaggedLocally || isFlaggedByBackend || isFlaggedByLinks;
-  email.isFlagged = isFlagged;
-  email.linkRisks = linkRisks;
-
-  // Log comprehensive analysis
-  console.log('Detailed Email Analysis:', {
-    subject: email.subject,
-    keywordFlag: isFlaggedLocally,
-    matchedKeyword: email.keywordMatch,
-    backendFlag: isFlaggedByBackend,
-    linkRisks: linkRisks,
-    overallFlag: email.isFlagged
-  });
-
-  return email;
-}
-
-// Extract email body from Gmail API response
-// This function extracts the email body from the Gmail API response, decoding it from base64.
-// Referenced in: fetchEmailDetails (background.js)
-export function extractEmailBody(payload) {
-  let body = '';
-  if (payload.parts) {
-    const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
-    if (htmlPart?.body?.data) {
-      body = atob(htmlPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    }
-  } else if (payload.body?.data) {
-    body = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-  }
-  return body || 'No body content available';
-}
-
-// Analyze domain
-// This function analyzes the email body for suspicious links and alerts the user if any are found.
-// Referenced in: EmailModal.vue (analyzeDomain)
-export async function analyzeDomain() {
-  try {
-    const linkRisks = linkAnalysis(this.email.body);  // Directly call linkAnalysis here
-    if (linkRisks.length > 0) {
-      alert(`Suspicious links detected: ${linkRisks.join(', ')}`);
-    } else {
-      alert('No suspicious links detected.');
-    }
-  } catch (error) {
-    console.error('Failed to analyze email links:', error);
-    alert('An error occurred while analyzing the email links.');
-  }
-}
-
-// Check if an email ID is already processed
-// This function checks if an email ID has already been processed and stored in Chrome's local storage.
-// Referenced in: saveEmailToBackend (background.js)
-export async function isEmailProcessed(emailId) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['processedEmails'], (result) => {
-      const processedEmails = result.processedEmails || [];
-      resolve(processedEmails.includes(emailId));
-    });
-  });
-}
-
-// Mark an email ID as processed
-// This function marks an email ID as processed by storing it in Chrome's local storage.
-// Referenced in: saveEmailToBackend (background.js)
-export async function markEmailAsProcessed(emailId) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['processedEmails'], (result) => {
-      const processedEmails = result.processedEmails || [];
-      if (!processedEmails.includes(emailId)) {
-        processedEmails.push(emailId);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch email details: ${response.status}`);
       }
-      chrome.storage.local.set({ processedEmails }, () => resolve());
+  
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching email ${messageId}:`, error);
+      return null;
+    }
+  },
+
+  async fetchEmailBatch(token, pageToken = null) {
+    try {
+      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+      url.searchParams.append('maxResults', '20');
+      if (pageToken) {
+        url.searchParams.append('pageToken', pageToken);
+      }
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch emails: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Fetch details for each email
+      const emailPromises = data.messages.map(msg => 
+        this.fetchEmailDetails(token, msg.id)
+      );
+      
+      const emails = await Promise.all(emailPromises);
+      const validEmails = emails.filter(email => email != null);
+
+      return {
+        emails: validEmails,
+        nextPageToken: data.nextPageToken || null
+      };
+    } catch (error) {
+      console.error('Error fetching email batch:', error);
+      throw error;
+    }
+  },
+
+  // Add this helper method to store both HTML and plain text versions
+  getEmailContent(payload) {
+    const content = {
+        text: '',
+        html: '',
+        sanitizedHtml: ''
+    };
+
+    if (payload.parts) {
+        const textPart = payload.parts.find(part => part.mimeType === 'text/plain');
+        const htmlPart = payload.parts.find(part => part.mimeType === 'text/html');
+
+        if (textPart) {
+            content.text = this.decodeBase64Url(textPart.body.data);
+        }
+        if (htmlPart) {
+            content.html = this.decodeBase64Url(htmlPart.body.data);
+            content.sanitizedHtml = this.sanitizeEmailBody(content.html);
+        }
+    }
+
+    return content;
+  }
+};
+
+// Storage Helpers
+export const storageHelpers = {
+  async isEmailProcessed(emailId) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['processedEmails'], (result) => {
+        const processedEmails = result.processedEmails || [];
+        resolve(processedEmails.includes(emailId));
+      });
     });
-  });
-}
+  },
+
+  async markEmailAsProcessed(emailId) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['processedEmails'], (result) => {
+        const processedEmails = result.processedEmails || [];
+        if (!processedEmails.includes(emailId)) {
+          processedEmails.push(emailId);
+        }
+        chrome.storage.local.set({ processedEmails }, resolve);
+      });
+    });
+  }
+};
+
+
+
+// API Helpers
+export const apiHelpers = {
+
+  async getAuthToken() {
+    return new Promise((resolve, reject) => {
+      chrome.identity.getAuthToken({ interactive: true }, (token) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+          return;
+        }
+        if (!token) {
+          reject(new Error('Failed to get auth token'));
+          return;
+        }
+        resolve(token);
+      });
+    });
+  }
+};

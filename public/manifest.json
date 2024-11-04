@@ -8,7 +8,9 @@
     "identity.email",
     "alarms",
     "storage",
-    "notifications"
+    "notifications",
+    "https://gmail.googleapis.com/*",
+    "http://localhost:8080/*"
   ],
   "host_permissions": [
     "http://localhost:8080/*",

@@ -62,7 +62,6 @@ import EmailHeader from './components/EmailHeader.vue';
 import CloseIcon from './icons/CloseIcon.vue';
 import LoadingSpinner from './components/LoadingSpinner.vue';
 import WhoisLookup from './WhoisLookup.vue';
-import UrlStatusIcon from './components/UrlStatusIcon.vue';
 
 const props = defineProps({
     email: {

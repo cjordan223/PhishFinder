@@ -11,6 +11,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  define: {
+    'process.env.ALWAYS_PERFORM_DNS': JSON.stringify(process.env.ALWAYS_PERFORM_DNS || 'true'),
+  },
   css: {
     postcss: {
       plugins: [
@@ -40,7 +43,7 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => path.replace(/^\/analysis/, '')
       }
     },
     hmr: {

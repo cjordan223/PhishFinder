@@ -1,22 +1,18 @@
 <template>
-  <div class="common-dimensions">
-
-    <div class="max-w-4xl mx-auto p-4 bg-gray-100 flex items-center justify-center min-h-[500px]">
-      <div class="bg-white shadow-lg rounded-lg p-8 max-w-sm w-full mx-4">
-        <div class="text-center">
-          <img src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo"
-            class="w-24 h-24 mx-auto mb-6 rounded-full border-4 border-blue-500 shadow-lg" />
-          <h1 class="text-2xl font-bold mb-4 font-mono">Welcome to PhishFinder</h1>
-          <p class="text-gray-700 mb-6">Please login with your Google account to continue</p>
-          <button @click="login"
-            class="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors font-mono">
-            Login with Google
-          </button>
-        </div>
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light to-primary-dark p-4">
+    <div class="bg-white shadow-xl rounded-2xl p-8 max-w-sm w-full">
+      <div class="text-center">
+        <img src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo"
+          class="w-24 h-24 mx-auto mb-6 rounded-full border-4 border-primary shadow-lg" />
+        <h1 class="text-2xl font-bold mb-4 font-mono">Welcome to PhishFinder</h1>
+        <p class="text-gray-600 mb-8">Please login with your Google account to continue</p>
+        <button @click="login"
+          class="w-full bg-primary hover:bg-primary-dark text-white py-3 px-4 rounded-lg transition-colors font-mono">
+          Login with Google
+        </button>
       </div>
     </div>
   </div>
-
 </template>
 
 
