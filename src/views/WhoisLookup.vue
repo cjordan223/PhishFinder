@@ -20,43 +20,55 @@
         </div>
 
         <!-- Data Display -->
-        <div v-else-if="whoisData?.whoisData" class="space-y-3">
+        <div v-else-if="whoisData" class="space-y-3">
             <div class="grid grid-cols-2 gap-2">
-                <div class="text-gray-600">Registration Date:</div>
-                <div>{{ formatDate(whoisData.whoisData.domain.created_date) }}</div>
-
-                <div class="text-gray-600">Expiration Date:</div>
-                <div>{{ formatDate(whoisData.whoisData.domain.expiration_date) }}</div>
+                <div class="text-gray-600">Domain:</div>
+                <div>{{ whoisData?.whoisData?.domain?.domain || 'N/A' }}</div>
 
                 <div class="text-gray-600">Registrar:</div>
-                <div>{{ whoisData.whoisData.registrar?.name || 'N/A' }}</div>
+                <div>{{ whoisData?.whoisData?.registrar?.name || 'N/A' }}</div>
+
+                <div class="text-gray-600">Organization:</div>
+                <div>{{ whoisData?.whoisData?.registrant?.organization || 'N/A' }}</div>
+
+                <div class="text-gray-600">WHOIS Server:</div>
+                <div>{{ whoisData?.whoisData?.domain?.whois_server || 'N/A' }}</div>
             </div>
 
-            <!-- Additional WHOIS Details -->
-            <div v-if="whoisData.whoisData.domain" class="mt-4">
-                <h5 class="font-medium mb-2">Additional Details</h5>
+            <!-- Additional Details -->
+            <div class="mt-4">
+                <h5 class="font-medium mb-2">Administrative Contact</h5>
                 <div class="text-sm space-y-1">
                     <div>
-                        <span class="text-gray-600">Domain:</span>
-                        <span class="ml-2">{{ whoisData.whoisData.domain.domain }}</span>
+                        <span class="text-gray-600">Organization:</span>
+                        <span class="ml-2">{{ whoisData?.whoisData?.administrative?.organization || 'N/A' }}</span>
                     </div>
                     <div>
-                        <span class="text-gray-600">Name Servers:</span>
-                        <span class="ml-2">{{ whoisData.whoisData.domain.name_servers?.join(', ') }}</span>
+                        <span class="text-gray-600">Province:</span>
+                        <span class="ml-2">{{ whoisData?.whoisData?.administrative?.province || 'N/A' }}</span>
                     </div>
                     <div>
-                        <span class="text-gray-600">Status:</span>
-                        <span class="ml-2">{{ whoisData.whoisData.domain.status?.join(', ') }}</span>
+                        <span class="text-gray-600">Country:</span>
+                        <span class="ml-2">{{ whoisData?.whoisData?.administrative?.country || 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technical Contact -->
+            <div class="mt-4">
+                <h5 class="font-medium mb-2">Technical Contact</h5>
+                <div class="text-sm space-y-1">
+                    <div>
+                        <span class="text-gray-600">Organization:</span>
+                        <span class="ml-2">{{ whoisData?.whoisData?.technical?.organization || 'N/A' }}</span>
                     </div>
                     <div>
-                        <span class="text-gray-600">Last Updated:</span>
-                        <span class="ml-2">{{ formatDate(whoisData.whoisData.domain.updated_date) }}</span>
+                        <span class="text-gray-600">Email:</span>
+                        <span class="ml-2">{{ whoisData?.whoisData?.technical?.email || 'N/A' }}</span>
                     </div>
                 </div>
             </div>
         </div>
-
-
 
         <!-- No Data State -->
         <div v-else class="text-gray-500 py-2">
@@ -65,114 +77,127 @@
     </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue';
-import { emailHelpers } from '@/utils/utils';
 import { dnsCache } from '@/utils/dnsCache'; // Import the DNS cache
 import LoadingSpinner from './components/LoadingSpinner.vue';
 
-export default {
-    name: 'WhoisLookup',
-    components: {
-        LoadingSpinner
-    },
-    props: {
-        domain: {
-            type: String,
-            required: true
-        }
-    },
-    setup(props) {
-        const whoisData = ref(null);
-        const loading = ref(false);
-        const error = ref(null);
+const whoisData = ref(null);
+const loading = ref(false);
+const error = ref(null);
+let isInitialFetch = true;
 
-        // Add a force refresh option
-        const forceRefresh = ref(false);
+const props = defineProps({
+    domain: {
+        type: String,
+        required: true
+    },
+    emailId: {
+        type: String,
+        required: true
+    }
+});
 
-        async function fetchWhoisData() {
-            if (!props.domain) {
-                console.warn('No domain provided for WHOIS lookup');
-                return;
+const emit = defineEmits(['mounted']);
+
+async function fetchWhoisData() {
+    if (!isInitialFetch) {
+        console.log('Skipping duplicate fetch');
+        return;
+    }
+
+    if (!props.domain) {
+        console.warn('No domain provided for WHOIS lookup');
+        return;
+    }
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+        // Check cache first
+        const cachedData = dnsCache.get(props.domain);
+        console.log('Checking cache for domain:', props.domain);
+
+        if (cachedData) {
+            console.log('Using cached WHOIS data for:', props.domain);
+            whoisData.value = cachedData;
+
+            // Always update database when emailId is provided, even with cached data
+            if (props.emailId) {
+                console.log('Updating database with cached WHOIS data');
+                await updateDatabaseAssociation();
+            }
+        } else {
+            // Fetch new data if not cached
+            const response = await fetch(`http://localhost:8080/whois/${encodeURIComponent(props.domain)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            loading.value = true;
-            error.value = null;
+            const data = await response.json();
+            console.log('Received new WHOIS data:', data);
 
-            const url = `http://localhost:8080/whois/${props.domain}`;
-            console.log('Sending request to:', url);
-
-            try {
-                // Check cache first
-                const cachedData = dnsCache.get(props.domain);
-                if (cachedData && !forceRefresh.value) {
-                    console.log('Using cached WHOIS data');
-                    whoisData.value = cachedData;
-                    return;
-                }
-
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Received WHOIS data:', data);
-
+            if (data.success) {
                 whoisData.value = data;
                 dnsCache.set(props.domain, data);
 
-            } catch (err) {
-                console.error('WHOIS lookup error:', err);
-                error.value = `Failed to fetch WHOIS data: ${err.message}`;
-            } finally {
-                loading.value = false;
-                forceRefresh.value = false;
+                // Update database with new data
+                if (props.emailId) {
+                    await updateDatabaseAssociation();
+                }
             }
         }
+    } catch (err) {
+        console.error('WHOIS lookup error:', err);
+        error.value = `Failed to fetch WHOIS data: ${err.message}`;
+    } finally {
+        loading.value = false;
+        isInitialFetch = false;
+    }
+}
 
-        // Add method to force refresh
-        function refreshData() {
-            forceRefresh.value = true;
-            fetchWhoisData();
-        }
+// Separate function for database updates
+async function updateDatabaseAssociation() {
+    try {
+        const updateUrl = `http://localhost:8080/whois/${encodeURIComponent(props.domain)}/${encodeURIComponent(props.emailId)}`;
+        console.log('Updating database association:', updateUrl);
 
-        function formatDate(date) {
-            return emailHelpers.formatDate(date);
-        }
-
-        function formatKey(key) {
-            return key.split(/(?=[A-Z])/).join(' ');
-        }
-
-        // Fetch data on mount
-        fetchWhoisData();
-        console.log('WHOIS data fetched:', whoisData.value);
-
-        // Add this to debug props
-        onMounted(() => {
-            console.log('whois.registrar', whoisData.value?.registrar);
-            console.log('whois.creationDate', whoisData.value?.creationDate);
-            console.log('whois.expiryDate', whoisData.value?.expiryDate);
-
+        const updateResponse = await fetch(updateUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
         });
 
-        return {
-            whoisData,
-            loading,
-            error,
-            fetchWhoisData,
-            refreshData,
-            formatDate,
-            formatKey
-        };
+        if (!updateResponse.ok) {
+            console.error('Failed to update WHOIS database association');
+        } else {
+            console.log('Successfully updated WHOIS database association');
+        }
+    } catch (err) {
+        console.error('Error updating WHOIS database:', err);
     }
-};
+}
+
+// Add a function to clear cache for testing
+function clearCache() {
+    console.log('Clearing DNS cache');
+    dnsCache.clear();
+}
+
+onMounted(() => {
+    console.log('WhoisLookup mounted for domain:', props.domain);
+    emit('mounted');
+    if (!isInitialFetch) return;
+    fetchWhoisData();
+});
 </script>

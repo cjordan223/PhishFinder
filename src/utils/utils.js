@@ -92,15 +92,28 @@ export const emailHelpers = {
   },
 
   parseSender(from) {
-    const emailMatch = from.match(/<(.+?)>/);
+    // Clean up any double wrapping of angle brackets
+    from = from.replace(/^<(.+)>$/, '$1');
+    
+    // Match either "Name <email>" or just "email" format
+    const emailMatch = from.match(/<([^>]+)>/) || from.match(/([^\s<>]+@[^\s<>]+)/);
     const email = emailMatch ? emailMatch[1] : from;
-    const displayName = emailMatch ? from.split('<')[0].trim() : '';
+    
+    // Get display name: everything before the email, or email username if no display name
+    let displayName = from.split('<')[0].trim();
+    if (!displayName || displayName === email) {
+        displayName = email.split('@')[0]; // fallback to email username
+    }
+    
+    // Clean any remaining angle brackets from display name
+    displayName = displayName.replace(/[<>]/g, '').trim();
+    
     const domain = email.split('@')[1] || '';
 
     return {
-      address: email,
-      displayName,
-      domain
+        address: email.trim(),
+        displayName,
+        domain
     };
   },
 

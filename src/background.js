@@ -214,9 +214,13 @@ class EmailProcessor {
   }
 
   // Handle incoming messages from the frontend
-  handleMessages(request, sender, sendResponse) {
+  async handleMessages(request, sender, sendResponse) {
     if (request.action === 'fetchEmailDetails') {
       this.handleFetchEmailDetails(request, sendResponse);
+      return true;
+    }
+    if (request.action === 'performWhoisLookup') {
+      this.handleWhoisLookup(request, sendResponse);
       return true;
     }
   }
@@ -235,6 +239,32 @@ class EmailProcessor {
     } catch (error) {
       console.error('Error handling fetch email details:', error);
       sendResponse({ error: error.message });
+    }
+  }
+
+  async handleWhoisLookup(request, sendResponse) {
+    try {
+      const response = await fetch(`http://localhost:8080/whois/${request.domain}/${request.emailId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          domain: request.domain,
+          emailId: request.emailId,
+          forceCheck: true
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`WHOIS lookup failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      sendResponse({ success: true, data });
+    } catch (error) {
+      console.error('WHOIS lookup error:', error);
+      sendResponse({ success: false, error: error.message });
     }
   }
 }

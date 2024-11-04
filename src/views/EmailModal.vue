@@ -19,7 +19,7 @@
                 <EmailHeader :sender="{
                     displayName: email.sender?.displayName || email.sender?.address?.split('@')[0] || 'Unknown Sender',
                     address: email.sender?.address || 'no-address'
-                }" :date="email.metadata?.date || 'No Date'" />
+                }" :date="emailHelpers.formatDate(email.metadata?.date) || 'No Date'" />
 
                 <!-- Email Body -->
                 <div class="email-body-content prose max-w-none">
@@ -30,8 +30,11 @@
                 <SecurityAnalysis v-if="email?.security" :authentication="email.security.authentication"
                     :analysis="email.security.analysis" :urls="email.content?.urls" />
 
-                <!-- Add WhoisLookup Component -->
-                <WhoisLookup v-if="showWhois" :domain="normalizedSender?.domain" ref="whoisLookup" />
+                <!-- Update WhoisLookup component -->
+                <Transition>
+                    <WhoisLookup v-if="showWhois && isWhoisMounted" :domain="normalizedSender?.domain"
+                        :emailId="email.id" ref="whoisLookup" @mounted="isWhoisMounted = true" />
+                </Transition>
             </div>
 
             <!-- Footer -->
@@ -52,7 +55,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { emailHelpers, apiHelpers } from '@/utils/utils';
 import SecurityAnalysis from './SecurityAnalysis.vue';
 import EmailHeader from './components/EmailHeader.vue';
@@ -102,25 +105,27 @@ onMounted(() => {
 
 const whoisLookup = ref(null);
 const showWhois = ref(false);
+const isWhoisMounted = ref(false);
 
+// Replace the simple toggle with a more controlled version
 const toggleWhois = async () => {
     if (!showWhois.value) {
-        showWhois.value = true;
-        // Wait for component to mount
-        await nextTick();
-        // Trigger the fetch
-        if (whoisLookup.value) {
-            await whoisLookup.value.fetchWhoisData();
-        }
-    } else {
-        showWhois.value = false;
+        isWhoisMounted.value = false; // Reset mount state before showing
     }
+    showWhois.value = !showWhois.value;
 };
 
+// Use watch instead of the v-if to control component visibility
+watch(showWhois, (newVal) => {
+    if (newVal && !isWhoisMounted.value) {
+        isWhoisMounted.value = true;
+    }
+});
+
 // Debug logs
-watch(() => showWhois.value, (newVal) => {
-    console.log('showWhois changed:', newVal);
-    console.log('normalizedSender:', normalizedSender.value);
+console.log('Modal Email Details:', {
+    id: props.email.id,
+    domain: normalizedSender.value.domain
 });
 </script>
 
