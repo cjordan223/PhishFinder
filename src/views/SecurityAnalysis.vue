@@ -1,131 +1,125 @@
-<script setup>
-import { computed, ref } from 'vue';
-import AuthenticationBadge from './components/AuthenticationBadge.vue';
-import RiskBadge from './components/RiskBadge.vue';
-import UrlStatusIcon from './components/UrlStatusIcon.vue';
-
-const props = defineProps({
-    authentication: {
-        type: Object,
-        required: true,
-        default: () => ({})
-    },
-    analysis: {
-        type: Object,
-        required: true,
-        default: () => ({})
-    },
-    urls: {
-        type: Array,
-        default: () => []
-    }
-});
-
-// Add debug logging
-console.log('Authentication data:', props.authentication);
-
-const getAuthStatus = (type) => {
-    if (!props.authentication?.summary) {
-        console.warn('No authentication summary found');
-        return null;
-    }
-
-    const summary = props.authentication.summary;
-    console.log(`Checking ${type} status from summary:`, summary);
-
-    const match = summary.match(new RegExp(`${type}: (Pass|Fail)`));
-    const status = match ? match[1].toLowerCase() : null;
-    console.log(`${type} status:`, status);
-    return status;
-};
-
-const getAuthTooltip = (type) => {
-    if (!props.authentication) return 'Not available';
-    const values = {
-        spf: props.authentication.spf,
-        dkim: props.authentication.dkim,
-        dmarc: props.authentication.dmarc
-    };
-    return `${type}: ${values[type.toLowerCase()] || 'Not available'}`;
-};
-
-const suspiciousKeywords = computed(() => {
-    return props.analysis?.suspiciousKeywords?.map(keyword => ({
-        type: keyword.type,
-        matches: keyword.matches,
-        location: keyword.location
-    })) || [];
-});
-
-function getUrlStatus(url) {
-    if (props.analysis?.safeBrowsingResult?.some(result => result.url === url)) {
-        return 'malicious';
-    }
-    return props.analysis?.linkRisks?.some(risk => risk.url === url) ? 'suspicious' : 'safe';
-}
-</script>
-
 <template>
-    <div class="security-analysis p-4 bg-gray-50 rounded-lg">
-        <!-- Authentication Badges -->
-        <div class="flex space-x-2 mb-4">
-            <AuthenticationBadge label="SPF" :status="getAuthStatus('SPF')" :tooltip="getAuthTooltip('SPF')" />
-            <AuthenticationBadge label="DKIM" :status="getAuthStatus('DKIM')" :tooltip="getAuthTooltip('DKIM')" />
-            <AuthenticationBadge label="DMARC" :status="getAuthStatus('DMARC')" :tooltip="getAuthTooltip('DMARC')" />
-        </div>
+    <div v-if="email"
+        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4">
+        <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    {{ email.metadata?.subject || 'No Subject' }}
+                </h3>
+                <button @click="close"
+                    class="text-gray-400 hover:bg-gray-100 hover:text-gray-900 rounded-lg p-2 transition-colors">
+                    <CloseIcon />
+                </button>
+            </div>
 
-        <!-- Risk Level and Authentication -->
-        <div class="flex items-center space-x-4">
-            <RiskBadge :isFlagged="analysis?.isFlagged || false" />
-        </div>
+            <!-- Content -->
+            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                <!-- Email Header Component -->
+                <EmailHeader :sender="{
+                    displayName: email.sender?.displayName || email.sender?.address?.split('@')[0] || 'Unknown Sender',
+                    address: email.sender?.address || 'no-address'
+                }" :date="emailHelpers.formatDate(email.metadata?.date) || 'No Date'" />
 
-        <!-- Suspicious Keywords -->
-        <div v-if="suspiciousKeywords.length > 0" class="mt-4">
-            <h4 class="font-medium text-gray-700 mb-2">Suspicious Content:</h4>
-            <ul class="space-y-2">
-                <li v-for="(keyword, index) in suspiciousKeywords" :key="index"
-                    class="flex items-center text-sm text-gray-600">
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        {{ keyword.type }}
-                    </span>
-                    <span class="ml-2">
-                        Found in {{ keyword.location }}: {{ keyword.matches.join(', ') }}
-                    </span>
-                </li>
-            </ul>
-        </div>
+                <!-- Email Body -->
+                <div class="email-body-content prose max-w-none">
+                    {{ email.content?.body || 'No content available' }}
+                </div>
 
-        <!-- URLs -->
-        <div v-if="urls.length > 0" class="mt-4">
-            <h4 class="font-medium text-gray-700 mb-2">URLs in Email:</h4>
-            <ul class="space-y-2">
-                <li v-for="url in urls" :key="url" class="flex items-center text-sm">
-                    <UrlStatusIcon :status="getUrlStatus(url)" />
-                    <span class="ml-2 text-gray-600">{{ url }}</span>
-                </li>
-            </ul>
-        </div>
+                <!-- Security Analysis -->
+                <SecurityAnalysis :authentication="email.security?.authentication || {}"
+                    :analysis="email.security?.analysis || {}" :urls="email.content?.urls || []" />
 
-        <!-- Safe Browsing Results -->
-        <div v-if="analysis?.safeBrowsingResult?.length > 0" class="mt-4">
-            <h4 class="font-medium text-gray-700 mb-2">Safe Browsing Alerts:</h4>
-            <ul class="space-y-2">
-                <li v-for="(result, index) in analysis.safeBrowsingResult" :key="index"
-                    class="flex items-center text-sm text-red-600">
-                    <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        {{ result.threatType }}
-                    </span>
-                    <span class="ml-2">{{ result.url }}</span>
-                </li>
-            </ul>
+                <!-- Update WhoisLookup component -->
+                <Transition>
+                    <WhoisLookup v-if="showWhois && isWhoisMounted" :domain="normalizedSender?.domain"
+                        :emailId="email.id" ref="whoisLookup" @mounted="isWhoisMounted = true" />
+                </Transition>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex justify-end p-6 border-t bg-gray-50 rounded-b-xl">
+                <button @click="toggleWhois"
+                    class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors mr-2 flex items-center space-x-2"
+                    :disabled="!normalizedSender?.domain">
+                    <LoadingSpinner v-if="isLoading" class="w-5 h-5" />
+                    <span class="ml-2">{{ showWhois ? 'Hide WHOIS' : 'Show WHOIS' }}</span>
+                </button>
+                <button @click="close"
+                    class="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
 </template>
 
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue';
+import { emailHelpers } from '@/utils/utils';
+import SecurityAnalysis from './SecurityAnalysis.vue';
+import EmailHeader from './components/EmailHeader.vue';
+import CloseIcon from './icons/CloseIcon.vue';
+import LoadingSpinner from './components/LoadingSpinner.vue';
+import WhoisLookup from './WhoisLookup.vue';
+
+const props = defineProps({
+    email: {
+        type: Object,
+        required: true
+    }
+});
+
+const emit = defineEmits(['close']);
+
+// Computed properties
+const formattedDate = computed(() => emailHelpers.formatDate(props.email.metadata?.date));
+const normalizedSender = computed(() => {
+    const senderInfo = emailHelpers.parseSender(props.email?.sender?.address || '');
+    console.log('Parsed sender info:', senderInfo); // Debug log
+    return senderInfo;
+});
+
+// Methods
+function close() {
+    emit('close');
+}
+
+const isLoading = ref(false);
+
+const whoisLookup = ref(null);
+const showWhois = ref(false);
+const isWhoisMounted = ref(false);
+
+const toggleWhois = async () => {
+    if (!showWhois.value) {
+        isWhoisMounted.value = false; // Reset mount state before showing
+    }
+    showWhois.value = !showWhois.value;
+};
+
+watch(showWhois, (newVal) => {
+    if (newVal && !isWhoisMounted.value) {
+        isWhoisMounted.value = true;
+    }
+});
+
+// Debug logs
+onMounted(() => {
+    console.log('Email Modal Content:', {
+        sender: normalizedSender.value,
+        security: props.email.security,
+        urls: props.email.content?.urls
+    });
+});
+</script>
+
 <style scoped>
-.security-analysis {
-    border: 1px solid #e5e7eb;
+.email-body-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    color: #374151;
 }
 </style>

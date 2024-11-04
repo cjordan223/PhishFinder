@@ -151,7 +151,7 @@ function logout() {
 
 onMounted(() => {
   fetchEmails();
-  console.log("Paginated emails:", paginatedEmails.value); // Log paginated emails
+  // console.log("Paginated emails:", paginatedEmails.value); // Log paginated emails
 
 });
 </script>

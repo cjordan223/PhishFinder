@@ -1,7 +1,7 @@
 import { emailHelpers } from './utils';
 
 export const createEmailObject = (rawEmail) => {
-  console.log('Processing raw email:', rawEmail.id);
+  // console.log('Processing raw email:', rawEmail.id);
   
   if (!rawEmail || !rawEmail.payload) {
     console.error('Invalid raw email data:', rawEmail);

@@ -233,75 +233,10 @@ export const storageHelpers = {
   }
 };
 
-// Analysis Helpers
-export const analysisHelpers = {
-  async analyzeEmailSecurity(emailObject) {
-    if (!emailObject?.content?.body) {
-      console.warn('Email body is undefined or missing:', emailObject);
-      return {
-        isFlagged: false,
-        suspiciousKeywords: [],
-        linkRisks: [],
-        safeBrowsingResult: null
-      };
-    }
 
-    const keywordResults = await this.analyzeKeywords(emailObject.content.body);
-    const linkResults = await this.analyzeDomainSafety(emailObject.content.urls || []);
-
-    return {
-      isFlagged: keywordResults.isFlagged || linkResults.some(link => link.isSuspicious),
-      suspiciousKeywords: keywordResults.keywords || [],
-      linkRisks: linkResults,
-      safeBrowsingResult: null
-    };
-  },
-
-  async analyzeKeywords(text) {
-    // Implement keyword analysis logic
-    return { isFlagged: false, keywords: [] };
-  },
-
-  async analyzeDomainSafety(urls) {
-    // Implement URL safety analysis logic
-    return [];
-  }
-};
 
 // API Helpers
 export const apiHelpers = {
-  async fetchDNSRecords(domain) {
-    try {
-      const cleanedDomain = domain
-        .trim()
-        .replace(/[<>]/g, '')
-        .replace(/\s+/g, '')
-        .replace(/[^\w.-]/g, '')
-        .toLowerCase();
-
-      if (!cleanedDomain?.includes('.')) {
-        console.warn('Invalid domain format:', domain);
-        return {
-          spf: null,
-          dkim: null,
-          dmarc: null,
-          summary: 'Invalid domain format'
-        };
-      }
-
-      const response = await fetch(`http://localhost:8080/dns/dns-records/${cleanedDomain}`);
-      if (!response.ok) throw new Error(`DNS lookup failed: ${response.statusText}`);
-      return await response.json();
-    } catch (error) {
-      console.error('DNS lookup error:', error);
-      return {
-        spf: null,
-        dkim: null,
-        dmarc: null,
-        summary: 'Error fetching authentication details'
-      };
-    }
-  },
 
   async getAuthToken() {
     return new Promise((resolve, reject) => {

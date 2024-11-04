@@ -27,8 +27,8 @@
                 </div>
 
                 <!-- Security Analysis -->
-                <SecurityAnalysis v-if="email?.security" :authentication="email.security.authentication"
-                    :analysis="email.security.analysis" :urls="email.content?.urls" />
+                <SecurityAnalysis :authentication="email.security?.authentication || {}"
+                    :analysis="email.security?.analysis || {}" :urls="email.content?.urls || []" />
 
                 <!-- Update WhoisLookup component -->
                 <Transition>
@@ -55,13 +55,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
-import { emailHelpers, apiHelpers } from '@/utils/utils';
+import { ref, computed, onMounted, watch } from 'vue';
+import { emailHelpers } from '@/utils/utils';
 import SecurityAnalysis from './SecurityAnalysis.vue';
 import EmailHeader from './components/EmailHeader.vue';
 import CloseIcon from './icons/CloseIcon.vue';
 import LoadingSpinner from './components/LoadingSpinner.vue';
 import WhoisLookup from './WhoisLookup.vue';
+import UrlStatusIcon from './components/UrlStatusIcon.vue';
 
 const props = defineProps({
     email: {
@@ -80,12 +81,6 @@ const normalizedSender = computed(() => {
     return senderInfo;
 });
 
-const securityData = computed(() => ({
-    authentication: props.email?.security?.authentication || {},
-    analysis: props.email?.security?.analysis || {},
-    urls: props.email?.content?.urls || []
-}));
-
 // Methods
 function close() {
     emit('close');
@@ -93,21 +88,10 @@ function close() {
 
 const isLoading = ref(false);
 
-
-// Lifecycle hooks
-// debug props with logging
-onMounted(() => {
-    console.log('Email Modal Content:', {
-        sender: normalizedSender.value,
-        security: securityData.value
-    });
-});
-
 const whoisLookup = ref(null);
 const showWhois = ref(false);
 const isWhoisMounted = ref(false);
 
-// Replace the simple toggle with a more controlled version
 const toggleWhois = async () => {
     if (!showWhois.value) {
         isWhoisMounted.value = false; // Reset mount state before showing
@@ -115,7 +99,6 @@ const toggleWhois = async () => {
     showWhois.value = !showWhois.value;
 };
 
-// Use watch instead of the v-if to control component visibility
 watch(showWhois, (newVal) => {
     if (newVal && !isWhoisMounted.value) {
         isWhoisMounted.value = true;
@@ -123,9 +106,12 @@ watch(showWhois, (newVal) => {
 });
 
 // Debug logs
-console.log('Modal Email Details:', {
-    id: props.email.id,
-    domain: normalizedSender.value.domain
+onMounted(() => {
+    console.log('Email Modal Content:', {
+        sender: normalizedSender.value,
+        security: props.email.security,
+        urls: props.email.content?.urls
+    });
 });
 </script>
 
