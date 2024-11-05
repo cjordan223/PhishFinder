@@ -39,3 +39,5 @@ https://drive.google.com/drive/folders/15DF2BLvgvxBKGczPNsFGfVOBpZqoIFGX?usp=sha
    ![Should look like this when done](https://github.com/cjordan223/phish-finder2.0/blob/b6e9b6cdaef5dc892bb4019303700486f8f5c21b/src/images/picc2.png)
    
    ![Emails when loaded (need better nav) ](https://github.com/cjordan223/phish-finder2.0/blob/b6e9b6cdaef5dc892bb4019303700486f8f5c21b/src/images/picc22.png)
+
+Keep FE up to date with BE
