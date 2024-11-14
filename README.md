@@ -32,5 +32,9 @@ npm run build
    - Refresh extension
      
      ![image](https://github.com/user-attachments/assets/1c7db707-2240-4f38-9c76-a9e740567cca)
+     ![image](dist/images/fic1.png)
+     ![image](dist/images/fic2.png)
+     ![image](dist/images/fic3.png)
+
 
 
