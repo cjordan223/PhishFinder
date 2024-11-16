@@ -57,11 +57,19 @@ class EmailProcessor {
           },
           mode: 'cors'
         });
-        
+
+        if (response.status === 401) {
+          // Token expired, refresh it
+          console.log('Token expired, refreshing...'); // Debug log
+          token = await apiHelpers.refreshAuthToken();
+          console.log('New token obtained:', token); // Debug log
+          continue; // Retry with the new token
+        }
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         if (!data.messages) break;
 
@@ -91,71 +99,71 @@ class EmailProcessor {
 
   // Process a single email
   async processEmail(messageId) {
-      const token = await apiHelpers.getAuthToken();
-      if (!token) return;
-    
-      try {
-          // Fetch email data from Gmail
-          const emailData = await emailHelpers.fetchEmailDetails(token, messageId);
-          console.log('Fetched email data:', emailData);
-          if (!emailData) return;
-    
-          // Create basic email object
-          const basicEmailObject = createEmailObject(emailData);
-          console.log('Created basic email object:', basicEmailObject);
-    
-          // Send to backend for further analysis
-          const analyzedEmail = await this.sendToBackendForAnalysis(basicEmailObject);
-          console.log('Received analyzed email from backend:', analyzedEmail);
-    
-          // Save the analyzed email
-          await storageHelpers.markEmailAsProcessed(messageId);
-    
-          return analyzedEmail;
-      } catch (error) {
-          console.error(`Error processing email ${messageId}:`, error);
-      }
+    const token = await apiHelpers.getAuthToken();
+    if (!token) return;
+
+    try {
+      // Fetch email data from Gmail
+      const emailData = await emailHelpers.fetchEmailDetails(token, messageId);
+      console.log('Fetched email data:', emailData);
+      if (!emailData) return;
+
+      // Create basic email object
+      const basicEmailObject = createEmailObject(emailData);
+      console.log('Created basic email object:', basicEmailObject);
+
+      // Send to backend for further analysis
+      const analyzedEmail = await this.sendToBackendForAnalysis(basicEmailObject);
+      console.log('Received analyzed email from backend:', analyzedEmail);
+
+      // Save the analyzed email
+      await storageHelpers.markEmailAsProcessed(messageId);
+
+      return analyzedEmail;
+    } catch (error) {
+      console.error(`Error processing email ${messageId}:`, error);
+    }
   }
 
   // Send email object to backend for analysis
   async sendToBackendForAnalysis(emailObject) {
-      try {
-          const response = await fetch('http://localhost:8080/analysis/analyze-email', {
-              method: 'POST',
-              headers: { 
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-              },
-              body: JSON.stringify({
-                  id: emailObject.id,
-                  sender: emailObject.sender,
-                  subject: emailObject.metadata.subject,
-                  body: emailObject.content.body,
-                  timestamp: emailObject.metadata.date,
-                  rawPayload: emailObject.content.rawPayload,
-                  headers: emailObject.raw.payload.headers, // Include headers
-                  parts: emailObject.raw.payload.parts, // Include parts
-                  labels: emailObject.metadata.labels, // Include labels
-                  historyId: emailObject.raw.historyId, // Include historyId
-                  internalDate: emailObject.raw.internalDate, // Include internalDate
-                  sizeEstimate: emailObject.raw.sizeEstimate // Include sizeEstimate
-              })
-          });
-    
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-          }
-    
-          const analyzedEmail = await response.json();
-          return {
-              ...emailObject,
-              security: analyzedEmail.security,
-              analysis: analyzedEmail.analysis
-          };
-      } catch (error) {
-          console.error('Error in backend analysis:', error);
-          throw error;
+    try {
+      const response = await fetch('http://localhost:8080/analysis/analyze-email', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          id: emailObject.id,
+          sender: emailObject.sender,
+          subject: emailObject.metadata.subject,
+          body: emailObject.content.body,
+          timestamp: emailObject.metadata.date,
+          rawPayload: emailObject.content.rawPayload,
+          headers: emailObject.raw.payload.headers, // Include headers
+          parts: emailObject.raw.payload.parts, // Include parts
+          labels: emailObject.metadata.labels, // Include labels
+          historyId: emailObject.raw.historyId, // Include historyId
+          internalDate: emailObject.raw.internalDate, // Include internalDate
+          sizeEstimate: emailObject.raw.sizeEstimate // Include sizeEstimate
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const analyzedEmail = await response.json();
+      return {
+        ...emailObject,
+        security: analyzedEmail.security,
+        analysis: analyzedEmail.analysis
+      };
+    } catch (error) {
+      console.error('Error in backend analysis:', error);
+      throw error;
+    }
   }
 
   // Save analyzed email object to backend

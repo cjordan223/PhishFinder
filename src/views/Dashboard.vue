@@ -14,10 +14,16 @@
                         <option value="90d">Last 90 days</option>
                     </select>
                 </div>
+                <!-- Button to open metrics in a new tab -->
+                <div class="bg-white rounded-lg shadow p-4 mb-4">
+                    <button @click="openMetricsPage" class="px-4 py-2 bg-blue-500 text-white rounded-lg">
+                        Open Metrics in New Tab
+                    </button>
+                </div>
                 <!-- Embedded Dashboard Iframe -->
                 <div class="bg-white rounded-lg shadow p-4">
                     <iframe
-                        style="background: #21313C;border: none;border-radius: 2px;box-shadow: 0 2px 10px 0 rgba(70, 76, 79, .2);width: 100vw;height: 100vh;"
+                        style="background: #21313C;border: none;border-radius: 2px;box-shadow: 0 2px 10px 0 rgba(70, 76, 79, .2);width: 100%;height: 600px;"
                         src="https://charts.mongodb.com/charts-project-0-waizlvy/embed/dashboards?id=cb913134-f09f-4887-b801-d2e447be1950&theme=dark&autoRefresh=true&maxDataAge=3600&showTitleAndDesc=true&scalingWidth=scale&scalingHeight=fixed"></iframe>
                 </div>
             </div>
@@ -42,9 +48,12 @@ export default {
     },
     methods: {
         fetchMetrics() {
-            // This method can be left empty or removed if no longer needed
+            // Fetch metrics logic here
         },
-
+        openMetricsPage() {
+            const metricsUrl = chrome.runtime.getURL('metrics.html');
+            window.open(metricsUrl, '_blank');
+        },
         logout() {
             chrome.storage.local.set({ loggedOut: true }, () => {
                 this.$router.push('/login');

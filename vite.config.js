@@ -3,9 +3,10 @@ import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
+import renamePlugin from './renamePlugin'; // Import the rename plugin
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), renamePlugin()], // Add the rename plugin
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -27,6 +28,7 @@ export default defineConfig({
       input: {
         popup: 'index.html',
         background: 'src/background.js',
+        metrics: 'metrics.html',
       },
       output: {
         entryFileNames: '[name].js',
@@ -43,12 +45,8 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/analysis/, '')
-      }
-    },
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
 });
