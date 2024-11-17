@@ -1,14 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import LoginPage from '../views/LoginPage.vue';
 import EmailPage from '../views/EmailPage.vue';
-import Dashboard from '../views/Dashboard.vue';
-import MetricsPage from '../views/MetricsPage.vue'; // Import the new MetricsPage
 
 const routes = [
   { path: '/login', name: 'Login', component: LoginPage },
   { path: '/emails', name: 'Emails', component: EmailPage, meta: { requiresAuth: true } },
-  { path: '/dashboard', name: 'Dashboard', component: Dashboard, meta: { requiresAuth: true } },
-  { path: '/metrics', name: 'Metrics', component: MetricsPage, meta: { requiresAuth: true } }, // Add the new route
   { path: '/', redirect: '/login' }
 ];
 

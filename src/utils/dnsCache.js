@@ -31,5 +31,5 @@ export class DNSCache {
 
 // Create and export a singleton instance
 export const dnsCache = new DNSCache(
-    parseInt(process.env.DNS_CACHE_DURATION || '3600')
-); 
+    parseInt(import.meta.env.VITE_DNS_CACHE_DURATION || '3600')
+);

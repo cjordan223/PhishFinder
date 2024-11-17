@@ -2,7 +2,7 @@
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light to-primary-dark p-4">
     <div class="bg-white shadow-xl rounded-2xl p-8 max-w-sm w-full">
       <div class="text-center">
-        <img src="/public/images/phishfinderlogo.png" alt="PhishFinder Logo"
+        <img src="/images/phishfinderlogo.png" alt="PhishFinder Logo"
           class="w-24 h-24 mx-auto mb-6 rounded-full border-4 border-primary shadow-lg" />
         <h1 class="text-2xl font-bold mb-4 font-mono">Welcome to PhishFinder</h1>
         <p class="text-gray-600 mb-8">Please login with your Google account to continue</p>

@@ -233,7 +233,16 @@ export const storageHelpers = {
   }
 };
 
-
+// Analysis Helpers
+export const analysisHelpers = {
+  analyzeEmail(email) {
+    // Example analysis function
+    return {
+      security: 'safe',
+      analysis: 'No issues found'
+    };
+  }
+};
 
 // API Helpers
 export const apiHelpers = {

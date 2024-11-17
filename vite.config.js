@@ -12,9 +12,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  define: {
-    'process.env.ALWAYS_PERFORM_DNS': JSON.stringify(process.env.ALWAYS_PERFORM_DNS || 'true'),
-  },
   css: {
     postcss: {
       plugins: [
@@ -36,6 +33,9 @@ export default defineConfig({
         assetFileNames: '[name].[ext]',
       },
     },
+  },
+  define: {
+    'process.env': process.env // Ensure process.env is available
   },
   server: {
     port: 5173,
