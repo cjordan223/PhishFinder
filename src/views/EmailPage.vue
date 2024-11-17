@@ -15,12 +15,7 @@
 
           <EmptyState v-else-if="!loading && !error" class="py-12" />
 
-          <!-- Button to open metrics in a new tab -->
-          <div class="mt-6">
-            <button @click="openMetricsPage" class="px-4 py-2 bg-blue-500 text-white rounded-lg">
-              Open Metrics in New Tab
-            </button>
-          </div>
+
         </div>
       </div>
     </main>
