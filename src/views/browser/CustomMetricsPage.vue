@@ -204,10 +204,8 @@ export default {
     methods: {
         async initializeChart() {
             try {
-                // Dynamically import the SDK to avoid top-level await issues
-                const { default: ChartsEmbedSDK } = await import('@mongodb-js/charts-embed-dom');
-
-                const sdk = new ChartsEmbedSDK({
+                const ChartsEmbedSDK = await import('@mongodb-js/charts-embed-dom');
+                const sdk = new ChartsEmbedSDK.default({
                     baseUrl: 'https://charts.mongodb.com/charts-project-0-waizlvy',
                 });
 
@@ -218,7 +216,10 @@ export default {
                 await chart.render(document.getElementById('chart'));
             } catch (error) {
                 console.error('Failed to initialize chart:', error);
-                window.alert('Chart failed to initialise');
+                const chartElement = document.getElementById('chart');
+                if (chartElement) {
+                    chartElement.innerHTML = 'Chart failed to load';
+                }
             }
         }
     }

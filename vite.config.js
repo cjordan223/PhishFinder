@@ -3,14 +3,14 @@ import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
-import renamePlugin from './renamePlugin'; // Import the rename plugin
+import renamePlugin from './renamePlugin';
 
 export default defineConfig({
-  plugins: [vue(), renamePlugin()], // Add the rename plugin
+  plugins: [vue(), renamePlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-    },
+    }
   },
   css: {
     postcss: {
@@ -21,6 +21,7 @@ export default defineConfig({
     },
   },
   build: {
+    target: 'esnext',
     rollupOptions: {
       input: {
         popup: 'index.html',
@@ -28,25 +29,30 @@ export default defineConfig({
         metrics: 'metrics.html',
       },
       output: {
+        format: 'es',
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
-      },
+      }
     },
+    commonjsOptions: {
+      include: [
+        /node_modules/,
+        /@mongodb-js\/charts-embed-dom/
+      ],
+      transformMixedEsModules: true
+    }
+  },
+  optimizeDeps: {
+    include: ['@mongodb-js/charts-embed-dom'],
+    esbuildOptions: {
+      target: 'esnext',
+      supported: {
+        'top-level-await': true
+      },
+    }
   },
   define: {
-    'process.env': process.env // Ensure process.env is available
-  },
-  server: {
-    port: 5173,
-    strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
-  },
+    'process.env': process.env
+  }
 });
