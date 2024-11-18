@@ -29,17 +29,19 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <div v-if="stat.label === 'Compliant Devices'">
-                                <p class="text-4xl font-bold"></p>
-                                <div id="chart" style="width: 220px; height: 140px;"></div>
+                                <!-- Ensure this div has the correct ID -->
+                                <div id="chart1" style="width: 220px; height: 140px;"></div>
+                                <button id="refreshButton1"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
+                                    Chart</button>
                             </div>
-                            <p v-else class="text-4xl font-bold">{{ stat.value }}</p>
-                            <p v-if="stat.total && stat.label !== 'Compliant Devices'" class="text-sm text-gray-400">of
-                                {{ stat.total }}</p>
-                            <p class="text-sm text-gray-400">{{ stat.label }}</p>
-                            <p v-if="stat.sublabel" class="text-sm text-gray-400">{{ stat.sublabel }}</p>
-                        </div>
-                        <div v-if="stat.showInfo" class="text-gray-400">
-                            <InformationCircleIcon class="h-6 w-6" />
+                            <div v-else-if="stat.label === 'Policies Executed'">
+                                <!-- Ensure this div has the correct ID -->
+                                <div id="chart2" style="width: 220px; height: 140px;"></div>
+                                <button id="refreshButton2"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
+                                    Chart</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -50,10 +52,6 @@
                 <!-- Device Troubleshooting Card -->
                 <div
                     class="bg-gray-800 rounded-lg p-6 transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                    <div class="mb-4">
-                        <h2 class="text-lg font-semibold">Device Troubleshooting</h2>
-                        <p class="text-sm text-gray-400">606 Devices require your attention</p>
-                    </div>
                     <div class="relative w-48 h-48">
                         <div class="absolute inset-0 flex items-center justify-center">
                             <div v-for="(item, index) in troubleshootingData" :key="index"
@@ -72,7 +70,6 @@
                 <!-- Outstanding Patch Count Card -->
                 <div
                     class="bg-gray-800 rounded-lg p-6 transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                    <h2 class="text-lg font-semibold mb-4">Outstanding Patch Count</h2>
                     <div class="overflow-x-auto">
                         <table class="w-full">
                             <thead>
@@ -109,7 +106,7 @@
 </template>
 
 <script>
-import { reactive, onMounted } from 'vue';
+import { reactive } from 'vue';
 import { BellIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 
 export default {
@@ -209,16 +206,44 @@ export default {
                     baseUrl: 'https://charts.mongodb.com/charts-project-0-waizlvy',
                 });
 
-                const chart = sdk.createChart({
+                const chart1 = sdk.createChart({
                     chartId: '23d25ceb-7aaf-4afa-9099-e3d7fafc9872',
+                    theme: 'dark', // Set the theme to dark
+                    autoRefresh: true, // Enable auto-refresh
+                    maxDataAge: 3600, // Set max data age to 1 hour
+                    showTitleAndDesc: false, // Hide title and description
+                    scalingWidth: 'scale', // Scale width
+                    scalingHeight: 'fixed' // Fixed height
                 });
 
-                await chart.render(document.getElementById('chart'));
+                await chart1.render(document.getElementById('chart1'));
+
+                // Add event listener for refresh button
+                document.getElementById('refreshButton1').addEventListener('click', () => chart1.refresh());
+
+                const chart2 = sdk.createChart({
+                    chartId: '5b422ef3-f8a6-4b50-8279-9fbb77a0419a',
+                    theme: 'dark', // Set the theme to dark
+                    autoRefresh: true, // Enable auto-refresh
+                    maxDataAge: 3600, // Set max data age to 1 hour
+                    showTitleAndDesc: false, // Hide title and description
+                    scalingWidth: 'scale', // Scale width
+                    scalingHeight: 'fixed' // Fixed height
+                });
+
+                await chart2.render(document.getElementById('chart2'));
+
+                // Add event listener for refresh button
+                document.getElementById('refreshButton2').addEventListener('click', () => chart2.refresh());
             } catch (error) {
                 console.error('Failed to initialize chart:', error);
-                const chartElement = document.getElementById('chart');
-                if (chartElement) {
-                    chartElement.innerHTML = 'Chart failed to load';
+                const chartElement1 = document.getElementById('chart1');
+                if (chartElement1) {
+                    chartElement1.innerHTML = 'Chart failed to load';
+                }
+                const chartElement2 = document.getElementById('chart2');
+                if (chartElement2) {
+                    chartElement2.innerHTML = 'Chart failed to load';
                 }
             }
         }
