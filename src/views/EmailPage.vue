@@ -11,10 +11,11 @@
           <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="isNextPageDisabled"
             @prevPage="prevPage" @nextPage="nextPage" class="mb-6" />
 
-          <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailModal"
-            class="divide-y divide-gray-200" />
+          <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailModal" />
 
           <EmptyState v-else-if="!loading && !error" class="py-12" />
+
+
         </div>
       </div>
     </main>
@@ -28,7 +29,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { emailHelpers, apiHelpers } from '@/utils/utils';
 import Header from '@/views/components/Header.vue';
-import EmailModal from '@/views//EmailModal.vue';
+import EmailModal from '@/views/EmailModal.vue';
 import PaginationControls from '@/views/components/PaginationControls.vue';
 import EmailList from '@/views/EmailList.vue';
 import LoadingSpinner from '@/views/components/LoadingSpinner.vue';
@@ -149,10 +150,13 @@ function logout() {
   });
 }
 
+function openMetricsPage() {
+  const metricsUrl = chrome.runtime.getURL('metrics.html');
+  window.open(metricsUrl, '_blank');
+}
+
 onMounted(() => {
   fetchEmails();
-  // console.log("Paginated emails:", paginatedEmails.value); // Log paginated emails
-
 });
 </script>
 

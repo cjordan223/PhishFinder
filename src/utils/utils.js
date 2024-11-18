@@ -233,11 +233,19 @@ export const storageHelpers = {
   }
 };
 
-
+// Analysis Helpers
+export const analysisHelpers = {
+  analyzeEmail(email) {
+    // Example analysis function
+    return {
+      security: 'safe',
+      analysis: 'No issues found'
+    };
+  }
+};
 
 // API Helpers
 export const apiHelpers = {
-
   async getAuthToken() {
     return new Promise((resolve, reject) => {
       chrome.identity.getAuthToken({ interactive: true }, (token) => {
@@ -250,6 +258,30 @@ export const apiHelpers = {
           return;
         }
         resolve(token);
+      });
+    });
+  },
+
+  async refreshAuthToken() {
+    return new Promise((resolve, reject) => {
+      chrome.identity.getAuthToken({ interactive: false }, (token) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+          return;
+        }
+        chrome.identity.removeCachedAuthToken({ token }, () => {
+          chrome.identity.getAuthToken({ interactive: true }, (newToken) => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+              return;
+            }
+            if (!newToken) {
+              reject(new Error('Failed to refresh auth token'));
+              return;
+            }
+            resolve(newToken);
+          });
+        });
       });
     });
   }
