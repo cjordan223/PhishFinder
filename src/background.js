@@ -139,6 +139,7 @@ class EmailProcessor {
           sender: emailObject.sender,
           subject: emailObject.metadata.subject,
           body: emailObject.content.body,
+          htmlBody: emailObject.content.htmlBody, // Include HTML body
           timestamp: emailObject.metadata.date,
           rawPayload: emailObject.content.rawPayload,
           headers: emailObject.raw.payload.headers, // Include headers

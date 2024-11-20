@@ -28,42 +28,56 @@ export const emailHelpers = {
 
   getEmailBody(payload) {
     if (!payload) {
-        console.warn('No payload provided');
-        return '';
+      console.warn('No payload provided');
+      return '';
     }
-
-    // Log the payload structure for debugging
 
     // Try to get content from parts first
     if (payload.parts) {
-        const bodyContent = this._getBodyFromParts(payload.parts);
-        if (bodyContent) return bodyContent;
+      const bodyContent = this._getBodyFromParts(payload.parts, 'text/plain');
+      if (bodyContent) return bodyContent;
     }
 
     // If no parts but has body data directly
     if (payload.body?.data) {
-        return this._decodeAndFormatBody(payload);
+      return this._decodeAndFormatBody(payload);
     }
 
     console.warn('No readable body content found in payload');
     return '';
   },
 
-  _getBodyFromParts(parts) {
-    // Try plain text first
-    const textPart = parts.find(part => part.mimeType === 'text/plain');
-    if (textPart) return this._decodeAndFormatBody(textPart);
+  getEmailHtmlBody(payload) {
+    if (!payload) {
+      console.warn('No payload provided');
+      return '';
+    }
 
-    // Then try HTML
-    const htmlPart = parts.find(part => part.mimeType === 'text/html');
-    if (htmlPart) return this._decodeAndFormatBody(htmlPart);
+    // Try to get content from parts first
+    if (payload.parts) {
+      const bodyContent = this._getBodyFromParts(payload.parts, 'text/html');
+      if (bodyContent) return bodyContent;
+    }
+
+    // If no parts but has body data directly
+    if (payload.body?.data) {
+      return this._decodeAndFormatBody(payload);
+    }
+
+    console.warn('No readable HTML body content found in payload');
+    return '';
+  },
+
+  _getBodyFromParts(parts, mimeType) {
+    const part = parts.find(part => part.mimeType === mimeType);
+    if (part) return this._decodeAndFormatBody(part);
 
     // Check nested parts
     for (const part of parts) {
-        if (part.parts) {
-            const nestedBody = this.getEmailBody(part);
-            if (nestedBody) return nestedBody;
-        }
+      if (part.parts) {
+        const nestedBody = this._getBodyFromParts(part.parts, mimeType);
+        if (nestedBody) return nestedBody;
+      }
     }
     return null;
   },
@@ -71,7 +85,7 @@ export const emailHelpers = {
   _decodeAndFormatBody(part) {
     if (!part.body?.data) return '';
     const decoded = this.decodeBase64Url(part.body.data);
-    return part.mimeType === 'text/html' ? this._convertHtmlToText(decoded) : decoded;
+    return part.mimeType === 'text/html' ? decoded : this._convertHtmlToText(decoded);
   },
 
   _convertHtmlToText(html) {

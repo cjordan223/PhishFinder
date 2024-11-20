@@ -1,8 +1,6 @@
 import { emailHelpers } from './utils';
 
 export const createEmailObject = (rawEmail) => {
-  // console.log('Processing raw email:', rawEmail.id);
-  
   if (!rawEmail || !rawEmail.payload) {
     console.error('Invalid raw email data:', rawEmail);
     return null;
@@ -21,10 +19,8 @@ export const createEmailObject = (rawEmail) => {
   const from = headers.find(h => h.name.toLowerCase() === 'from')?.value || '';
   const senderInfo = emailHelpers.parseSender(from);
 
- 
   const body = emailHelpers.getEmailBody(rawEmail.payload);
-  
- 
+  const htmlBody = emailHelpers.getEmailHtmlBody(rawEmail.payload); // Get HTML body
 
   const emailObject = {
     id: rawEmail.id,
@@ -32,6 +28,7 @@ export const createEmailObject = (rawEmail) => {
     sender: senderInfo,
     content: {
       body,
+      htmlBody, // Include HTML body
       sanitizedBody: emailHelpers.sanitizeEmailBody(body),
       urls: emailHelpers.extractUrlsFromEmail(body),
       rawPayload: rawEmail.payload
