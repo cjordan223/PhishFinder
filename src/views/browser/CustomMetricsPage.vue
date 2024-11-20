@@ -66,19 +66,10 @@
                 <!-- Device Troubleshooting Card -->
                 <div
                     class="bg-gray-800 rounded-lg p-6 transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                    <div class="relative w-48 h-48">
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <div v-for="(item, index) in troubleshootingData" :key="index"
-                                class="w-4 h-4 rounded-full mx-1" :style="{ backgroundColor: item.color }" />
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <div v-for="(item, index) in troubleshootingData" :key="index"
-                            class="flex items-center justify-between mt-2">
-                            <span class="text-sm">{{ item.label }}</span>
-                            <span class="text-sm">{{ item.percentage }}%</span>
-                        </div>
-                    </div>
+                    <div id="chart5" style="width: 100%; height: 300px;"></div>
+                    <button id="refreshButton5"
+                        class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
+                        Chart</button>
                 </div>
 
                 <!-- Outstanding Patch Count Card -->
@@ -279,6 +270,21 @@ export default {
 
                 // Add event listener for refresh button
                 document.getElementById('refreshButton4').addEventListener('click', () => chart4.refresh());
+
+                const chart5 = sdk.createChart({
+                    chartId: '6a11c51a-78a4-4cb7-83bb-968c4c0e8c9e',
+                    theme: 'dark', // Set the theme to dark
+                    autoRefresh: true, // Enable auto-refresh
+                    maxDataAge: 3600, // Set max data age to 1 hour
+                    showTitleAndDesc: false, // Hide title and description
+                    scalingWidth: 'scale', // Scale width
+                    scalingHeight: 'fixed' // Fixed height
+                });
+
+                await chart5.render(document.getElementById('chart5'));
+
+                // Add event listener for refresh button
+                document.getElementById('refreshButton5').addEventListener('click', () => chart5.refresh());
             } catch (error) {
                 console.error('Failed to initialize chart:', error);
                 const chartElement1 = document.getElementById('chart1');
@@ -296,6 +302,10 @@ export default {
                 const chartElement4 = document.getElementById('chart4');
                 if (chartElement4) {
                     chartElement4.innerHTML = 'Chart failed to load';
+                }
+                const chartElement5 = document.getElementById('chart5');
+                if (chartElement5) {
+                    chartElement5.innerHTML = 'Chart failed to load';
                 }
             }
         }
