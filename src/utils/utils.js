@@ -225,25 +225,49 @@ export const emailHelpers = {
 
 // Storage Helpers
 export const storageHelpers = {
-  async isEmailProcessed(emailId) {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['processedEmails'], (result) => {
-        const processedEmails = result.processedEmails || [];
-        resolve(processedEmails.includes(emailId));
+    async isEmailProcessed(emailId) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['processedEmails'], (result) => {
+                const processedEmails = result.processedEmails || [];
+                resolve(processedEmails.includes(emailId));
+            });
+        });
+    },
+
+    async markEmailAsProcessed(emailId) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['processedEmails'], (result) => {
+                const processedEmails = result.processedEmails || [];
+                if (!processedEmails.includes(emailId)) {
+                    processedEmails.push(emailId);
+                }
+                chrome.storage.local.set({ processedEmails }, resolve);
+            });
+        });
+    },
+
+    async saveAnalyzedEmail(emailId, analyzedEmail) {
+      return new Promise((resolve) => {
+          chrome.storage.local.get(['analyzedEmails'], (result) => {
+              const analyzedEmails = result.analyzedEmails || {};
+              analyzedEmails[emailId] = analyzedEmail;
+              chrome.storage.local.set({ analyzedEmails }, () => {
+                  console.log(`Saved analyzed email for ID ${emailId}:`, analyzedEmail);
+                  resolve();
+              });
+          });
       });
-    });
   },
 
-  async markEmailAsProcessed(emailId) {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['processedEmails'], (result) => {
-        const processedEmails = result.processedEmails || [];
-        if (!processedEmails.includes(emailId)) {
-          processedEmails.push(emailId);
-        }
-        chrome.storage.local.set({ processedEmails }, resolve);
+  async getAnalyzedEmail(emailId) {
+      return new Promise((resolve) => {
+          chrome.storage.local.get(['analyzedEmails'], (result) => {
+              const analyzedEmails = result.analyzedEmails || {};
+              const email = analyzedEmails[emailId] || null;
+              console.log(`Retrieved analyzed email for ID ${emailId}:`, email);
+              resolve(email);
+          });
       });
-    });
   }
 };
 

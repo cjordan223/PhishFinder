@@ -72,6 +72,7 @@ async function fetchEmails(pageToken = null) {
           id: fullEmail.id,
           content: {
             body: emailHelpers.getEmailBody(fullEmail.payload),
+            htmlBody: emailHelpers.getEmailHtmlBody(fullEmail.payload), // Add this line
             sanitizedBody: emailHelpers.sanitizeEmailBody(emailHelpers.getEmailBody(fullEmail.payload)),
             urls: emailHelpers.extractUrlsFromEmail(emailHelpers.getEmailBody(fullEmail.payload)),
             rawPayload: fullEmail.payload
