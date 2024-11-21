@@ -22,9 +22,8 @@
                 }" :date="emailHelpers.formatDate(email.metadata?.date) || 'No Date'" />
 
                 <!-- Email Body -->
-                <div class="email-body-content prose max-w-none">
-                    {{ email.content?.body || 'No content available' }}
-                </div>
+                <div class="email-body-content prose max-w-none"
+                    v-html="email.content?.htmlBody || 'No content available'"></div>
 
                 <!-- Security Analysis -->
                 <SecurityAnalysis :authentication="email.security?.authentication || {}"
@@ -62,7 +61,6 @@ import EmailHeader from './components/EmailHeader.vue';
 import CloseIcon from './icons/CloseIcon.vue';
 import LoadingSpinner from './components/LoadingSpinner.vue';
 import WhoisLookup from './WhoisLookup.vue';
-import UrlStatusIcon from './components/UrlStatusIcon.vue';
 
 const props = defineProps({
     email: {
@@ -110,7 +108,8 @@ onMounted(() => {
     console.log('Email Modal Content:', {
         sender: normalizedSender.value,
         security: props.email.security,
-        urls: props.email.content?.urls
+        urls: props.email.content?.urls,
+        htmlBody: props.email.content?.htmlBody // Log the HTML body content
     });
 });
 </script>

@@ -42,6 +42,20 @@
                                     class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
                                     Chart</button>
                             </div>
+                            <div v-else-if="stat.label === 'Available Updates'">
+                                <!-- Ensure this div has the correct ID -->
+                                <div id="chart3" style="width: 220px; height: 140px;"></div>
+                                <button id="refreshButton3"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
+                                    Chart</button>
+                            </div>
+                            <div v-else-if="stat.label === 'New Devices'">
+                                <!-- Ensure this div has the correct ID -->
+                                <div id="chart4" style="width: 220px; height: 140px;"></div>
+                                <button id="refreshButton4"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
+                                    Chart</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -52,19 +66,10 @@
                 <!-- Device Troubleshooting Card -->
                 <div
                     class="bg-gray-800 rounded-lg p-6 transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                    <div class="relative w-48 h-48">
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <div v-for="(item, index) in troubleshootingData" :key="index"
-                                class="w-4 h-4 rounded-full mx-1" :style="{ backgroundColor: item.color }" />
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <div v-for="(item, index) in troubleshootingData" :key="index"
-                            class="flex items-center justify-between mt-2">
-                            <span class="text-sm">{{ item.label }}</span>
-                            <span class="text-sm">{{ item.percentage }}%</span>
-                        </div>
-                    </div>
+                    <div id="chart5" style="width: 100%; height: 300px;"></div>
+                    <button id="refreshButton5"
+                        class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">Refresh
+                        Chart</button>
                 </div>
 
                 <!-- Outstanding Patch Count Card -->
@@ -235,6 +240,51 @@ export default {
 
                 // Add event listener for refresh button
                 document.getElementById('refreshButton2').addEventListener('click', () => chart2.refresh());
+
+                const chart3 = sdk.createChart({
+                    chartId: 'dfaa0dbd-40db-4435-acf1-850a4bd564a1',
+                    theme: 'dark', // Set the theme to dark
+                    autoRefresh: true, // Enable auto-refresh
+                    maxDataAge: 3600, // Set max data age to 1 hour
+                    showTitleAndDesc: false, // Hide title and description
+                    scalingWidth: 'scale', // Scale width
+                    scalingHeight: 'fixed' // Fixed height
+                });
+
+                await chart3.render(document.getElementById('chart3'));
+
+                // Add event listener for refresh button
+                document.getElementById('refreshButton3').addEventListener('click', () => chart3.refresh());
+
+                const chart4 = sdk.createChart({
+                    chartId: 'c84a0985-4aee-4cde-966a-121127273b1d',
+                    theme: 'dark', // Set the theme to dark
+                    autoRefresh: true, // Enable auto-refresh
+                    maxDataAge: 3600, // Set max data age to 1 hour
+                    showTitleAndDesc: false, // Hide title and description
+                    scalingWidth: 'scale', // Scale width
+                    scalingHeight: 'fixed' // Fixed height
+                });
+
+                await chart4.render(document.getElementById('chart4'));
+
+                // Add event listener for refresh button
+                document.getElementById('refreshButton4').addEventListener('click', () => chart4.refresh());
+
+                const chart5 = sdk.createChart({
+                    chartId: '6a11c51a-78a4-4cb7-83bb-968c4c0e8c9e',
+                    theme: 'dark', // Set the theme to dark
+                    autoRefresh: true, // Enable auto-refresh
+                    maxDataAge: 3600, // Set max data age to 1 hour
+                    showTitleAndDesc: false, // Hide title and description
+                    scalingWidth: 'scale', // Scale width
+                    scalingHeight: 'fixed' // Fixed height
+                });
+
+                await chart5.render(document.getElementById('chart5'));
+
+                // Add event listener for refresh button
+                document.getElementById('refreshButton5').addEventListener('click', () => chart5.refresh());
             } catch (error) {
                 console.error('Failed to initialize chart:', error);
                 const chartElement1 = document.getElementById('chart1');
@@ -244,6 +294,18 @@ export default {
                 const chartElement2 = document.getElementById('chart2');
                 if (chartElement2) {
                     chartElement2.innerHTML = 'Chart failed to load';
+                }
+                const chartElement3 = document.getElementById('chart3');
+                if (chartElement3) {
+                    chartElement3.innerHTML = 'Chart failed to load';
+                }
+                const chartElement4 = document.getElementById('chart4');
+                if (chartElement4) {
+                    chartElement4.innerHTML = 'Chart failed to load';
+                }
+                const chartElement5 = document.getElementById('chart5');
+                if (chartElement5) {
+                    chartElement5.innerHTML = 'Chart failed to load';
                 }
             }
         }

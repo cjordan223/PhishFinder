@@ -23,17 +23,17 @@ const normalizedEmails = computed(() => {
 });
 
 function normalizeEmail(email) {
-    // console.log('Email before normalization:', email);
-    // console.log('Email structure check:', {
-    //     hasContent: !!email.content,
-    //     hasSecurity: !!email.security,
-    //     hasBody: !!email.content?.body,
-    //     hasPayload: !!email.payload
-    // });
+    console.log('Email before normalization:', email);
+    console.log('Email structure check:', {
+        hasContent: !!email.content,
+        hasSecurity: !!email.security,
+        hasBody: !!email.content?.body,
+        hasPayload: !!email.payload
+    });
 
     // If the email is already normalized, return it as is
     if (email.content?.body && email.security) {
-        // console.log('Email already normalized, keeping security:', email.security);
+        console.log('Email already normalized, keeping security:', email.security);
         return email;
     }
 
@@ -61,19 +61,16 @@ function normalizeEmail(email) {
         security: email.security // Preserve the security object
     };
 
-    // // Debug logs
-    // console.log('Normalized email with security:', normalizedEmail);
-    // console.log('Security object:', normalizedEmail.security);
-
+    console.log('Normalized email:', normalizedEmail);
     return normalizedEmail;
 }
 
 onMounted(() => {
-    // console.log("Normalized Emails:", normalizedEmails.value);
-    // if (normalizedEmails.value.length > 0) {
-    //     console.log("Sample email body:", normalizedEmails.value[0]?.content?.body?.substring(0, 100));
-    //     console.log("Sample email security:", normalizedEmails.value[0]?.security);
-    // }
+    console.log("Normalized Emails:", normalizedEmails.value);
+    if (normalizedEmails.value.length > 0) {
+        console.log("Sample email body:", normalizedEmails.value[0]?.content?.body?.substring(0, 100));
+        console.log("Sample email security:", normalizedEmails.value[0]?.security);
+    }
 });
 </script>
 
