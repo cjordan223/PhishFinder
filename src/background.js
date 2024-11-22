@@ -1,7 +1,6 @@
 import { emailHelpers, storageHelpers, analysisHelpers, apiHelpers } from './utils/utils';
 import { createEmailObject } from './utils/emailStructure';
 
-
 class EmailProcessor {
   constructor() {
     this.emailQueue = [];
@@ -104,26 +103,26 @@ class EmailProcessor {
     if (!token) return;
 
     try {
-        // Fetch email data from Gmail
-        const emailData = await emailHelpers.fetchEmailDetails(token, messageId);
-        console.log('Fetched email data:', emailData);
-        if (!emailData) return;
+      // Fetch email data from Gmail
+      const emailData = await emailHelpers.fetchEmailDetails(token, messageId);
+      console.log('Fetched email data:', emailData);
+      if (!emailData) return;
 
-        // Create basic email object
-        const basicEmailObject = createEmailObject(emailData);
-        console.log('Created basic email object:', basicEmailObject);
+      // Create basic email object
+      const basicEmailObject = createEmailObject(emailData);
+      console.log('Created basic email object:', basicEmailObject);
 
-        // Send to backend for analysis
-        const analyzedEmail = await this.sendToBackendForAnalysis(basicEmailObject);
-        console.log('Received analyzed email from backend:', analyzedEmail);
+      // Send to backend for analysis
+      const analyzedEmail = await this.sendToBackendForAnalysis(basicEmailObject);
+      console.log('Received analyzed email from backend:', analyzedEmail);
 
-        // Save the analyzed email
-        await storageHelpers.saveAnalyzedEmail(messageId, analyzedEmail);
-        await storageHelpers.markEmailAsProcessed(messageId);
+      // Save the analyzed email
+      await storageHelpers.saveAnalyzedEmail(messageId, analyzedEmail);
+      await storageHelpers.markEmailAsProcessed(messageId);
 
-        return analyzedEmail;
+      return analyzedEmail;
     } catch (error) {
-        console.error(`Error processing email ${messageId}:`, error);
+      console.error(`Error processing email ${messageId}:`, error);
     }
   }
 
@@ -220,25 +219,35 @@ class EmailProcessor {
   // Handle fetch email details request
   async handleFetchEmailDetails(request, sendResponse) {
     try {
-        const storedEmail = await storageHelpers.getAnalyzedEmail(request.messageId);
-        if (storedEmail) {
-            console.log(`Returning stored analyzed email for ID ${request.messageId}`);
-            sendResponse(storedEmail);
-            return;
-        }
+      const storedEmail = await storageHelpers.getAnalyzedEmail(request.messageId);
+      if (storedEmail) {
+        const normalizedEmail = this.normalizeEmailData(storedEmail);
+        console.log('Normalized email:', normalizedEmail);
+        sendResponse(normalizedEmail);
+        return;
+      }
 
-        const token = await apiHelpers.getAuthToken();
-        if (!token) {
-            sendResponse({ error: 'Failed to retrieve token' });
-            return;
-        }
+      const token = await apiHelpers.getAuthToken();
+      if (!token) {
+        sendResponse({ error: 'Failed to retrieve token' });
+        return;
+      }
 
-        const emailDetails = await emailHelpers.fetchEmailDetails(token, request.messageId);
-        console.log(`Fetched email details from Gmail for ID ${request.messageId}:`, emailDetails);
-        sendResponse(emailDetails);
+      const emailDetails = await emailHelpers.fetchEmailDetails(token, request.messageId);
+      console.log(`Fetched email details from Gmail for ID ${request.messageId}:`, emailDetails);
+
+      // Send to backend for analysis
+      const analyzedEmail = await this.sendToBackendForAnalysis(emailDetails);
+      console.log('Received analyzed email from backend:', analyzedEmail);
+
+      // Save the analyzed email
+      await storageHelpers.saveAnalyzedEmail(request.messageId, analyzedEmail);
+      await storageHelpers.markEmailAsProcessed(request.messageId);
+
+      sendResponse(analyzedEmail);
     } catch (error) {
-        console.error('Error handling fetch email details:', error);
-        sendResponse({ error: error.message });
+      console.error('Error handling fetch email details:', error);
+      sendResponse({ error: error.message });
     }
   }
 
@@ -267,6 +276,25 @@ class EmailProcessor {
       sendResponse({ success: false, error: error.message });
     }
   }
+  normalizeEmailData(emailData) {
+    if (!emailData) return null;
+
+    // Deep clone the security object to ensure we don't lose nested properties
+    const security = emailData.security ? {
+        authentication: {
+            spf: emailData.security.authentication?.spf || 'N/A',
+            dkim: emailData.security.authentication?.dkim || 'N/A',
+            dmarc: emailData.security.authentication?.dmarc || 'N/A'
+        },
+        analysis: emailData.security.analysis || {},
+        flags: emailData.security.flags || {}
+    } : null;
+
+    return {
+        ...emailData,
+        security
+    };
+}
 }
 
 // Initialize the email processor

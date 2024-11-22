@@ -33,6 +33,7 @@ export const createEmailObject = (rawEmail) => {
       urls: emailHelpers.extractUrlsFromEmail(body),
       rawPayload: rawEmail.payload
     },
+    security: rawEmail.security, // Ensure security is included
     raw: rawEmail
   };
 
