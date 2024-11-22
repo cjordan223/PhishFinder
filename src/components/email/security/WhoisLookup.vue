@@ -79,8 +79,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { dnsCache } from '@/utils/dnsCache'; // Import the DNS cache
-import LoadingSpinner from './components/LoadingSpinner.vue';
+import { dnsCache } from '@/utils/dnsCache';
+
+// Update component imports to new structure
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 
 const whoisData = ref(null);
 const loading = ref(false);

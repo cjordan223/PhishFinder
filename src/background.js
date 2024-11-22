@@ -1,6 +1,7 @@
 import { emailHelpers, storageHelpers, analysisHelpers, apiHelpers } from './utils/utils';
 import { createEmailObject } from './utils/emailStructure';
 
+
 class EmailProcessor {
   constructor() {
     this.emailQueue = [];

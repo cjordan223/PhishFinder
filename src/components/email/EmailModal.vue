@@ -9,7 +9,12 @@
                 </h3>
                 <button @click="close"
                     class="text-gray-400 hover:bg-gray-100 hover:text-gray-900 rounded-lg p-2 transition-colors">
-                    <CloseIcon />
+                    <!-- Use SVG for close icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
 
@@ -33,14 +38,14 @@
                     dmarc: email.security?.authentication?.dmarc || '',
                     summary: email.security?.authentication?.summary || ''
                 }" :analysis="{
-                        isFlagged: email.security?.analysis?.isFlagged || false,
-                        linkRisks: email.security?.analysis?.linkRisks || [],
-                        safeBrowsingResults: email.security?.analysis?.safeBrowsingResults || {
-                            checkedUrls: 0,
-                            threatenedUrls: 0,
-                            results: []
-                        }
-                    }" :urls="email.content?.urls || []" />
+                    isFlagged: email.security?.analysis?.isFlagged || false,
+                    linkRisks: email.security?.analysis?.linkRisks || [],
+                    safeBrowsingResults: email.security?.analysis?.safeBrowsingResults || {
+                        checkedUrls: 0,
+                        threatenedUrls: 0,
+                        results: []
+                    }
+                }" :urls="email.content?.urls || []" />
 
                 <!-- Update WhoisLookup component -->
                 <Transition>
@@ -69,11 +74,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { emailHelpers } from '@/utils/utils';
-import SecurityAnalysis from './SecurityAnalysis.vue';
-import EmailHeader from './components/EmailHeader.vue';
-import CloseIcon from './icons/CloseIcon.vue';
-import LoadingSpinner from './components/LoadingSpinner.vue';
-import WhoisLookup from './WhoisLookup.vue';
+
+// Update component imports to new structure
+import SecurityAnalysis from '@/components/email/security/SecurityAnalysis.vue';
+import EmailHeader from '@/components/email/EmailHeader.vue';
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
+import WhoisLookup from '@/components/email/security/WhoisLookup.vue';
 
 const props = defineProps({
     email: {

@@ -40,7 +40,6 @@ export default defineConfig({
         /node_modules/,
         /@mongodb-js\/charts-embed-dom/
       ],
-      transformMixedEsModules: true
     }
   },
   optimizeDeps: {

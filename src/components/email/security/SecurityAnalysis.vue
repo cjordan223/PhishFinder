@@ -34,9 +34,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import AuthenticationBadge from './components/AuthenticationBadge.vue';
-import RiskBadge from './components/RiskBadge.vue';
-import UrlStatusIcon from './components/UrlStatusIcon.vue';
+
+// Update component imports to new structure
+import AuthenticationBadge from '@/components/email/security/AuthenticationBadge.vue';
+import RiskBadge from '@/components/email/security/RiskBadge.vue';
+import UrlStatusIcon from '@/components/email/security/UrlStatusIcon.vue';
 
 const props = defineProps({
     authentication: {

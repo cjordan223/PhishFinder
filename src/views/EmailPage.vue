@@ -26,13 +26,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { emailHelpers, apiHelpers } from '@/utils/utils';
-import Header from '@/views/components/Header.vue';
-import EmailModal from '@/views/EmailModal.vue';
-import PaginationControls from '@/views/components/PaginationControls.vue';
-import EmailList from '@/views/EmailList.vue';
-import LoadingSpinner from '@/views/components/LoadingSpinner.vue';
-import ErrorMessage from '@/views/components/ErrorMessage.vue';
-import EmptyState from '@/views/components/EmptyState.vue';
+import Header from '@/components/layout/Header.vue';
+import EmailModal from '@/components/email/EmailModal.vue';
+import PaginationControls from '@/components/core/PaginationControls.vue';
+import EmailList from '@/components/email/EmailList.vue';
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
+import ErrorMessage from '@/components/common/ErrorMessage.vue';
+import EmptyState from '@/components/common/EmptyState.vue';
 
 const router = useRouter();
 const emails = ref([]);
