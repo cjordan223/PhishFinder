@@ -1,38 +1,56 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-primary-light to-primary-dark w-full">
-    <Header @logout="logout" class="fixed top-0 w-full z-10" />
+  <div class="relative min-h-screen">
+    <!-- Main email list -->
+    <div
+      class="min-h-screen bg-gradient-to-br from-primary-light to-primary-dark w-full transform transition-all duration-300 ease-in-out"
+      :class="{ 'filter blur-sm translate-x-[-100%]': selectedEmail }">
+      <Header @logout="logout" class="fixed top-0 w-full z-10" />
 
-    <main class="w-full pt-20 pb-8">
-      <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 w-full">
-          <LoadingSpinner v-if="loading" class="my-8" />
-          <ErrorMessage v-if="error" :message="errorMessage" class="my-4" />
+      <main class="w-full pt-20 pb-8">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 w-full">
+            <!-- Loading state -->
+            <div v-if="loading" class="flex justify-center my-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
 
-          <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="isNextPageDisabled"
-            @prevPage="prevPage" @nextPage="nextPage" class="mb-6" />
+            <!-- Error state -->
+            <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-4">
+              {{ errorMessage }}
+            </div>
 
-          <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailModal" />
+            <PaginationControls v-if="emails.length > 0" :currentPage="currentPage"
+              :nextPageDisabled="isNextPageDisabled" @prevPage="prevPage" @nextPage="nextPage" class="mb-6" />
 
-          <EmptyState v-else-if="!loading && !error" class="py-12" />
+            <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails"
+              @open="openEmailDetail" />
+
+            <!-- Empty state -->
+            <div v-else-if="!loading && !error" class="text-center py-12 text-gray-500">
+              No emails found
+            </div>
+          </div>
         </div>
-      </div>
-    </main>
-  </div>
+      </main>
+    </div>
 
-  <EmailModal v-if="selectedEmail" :email="selectedEmail" @close="closeEmailModal" />
+    <Transition enter-active-class="transition-transform duration-300 ease-in-out" enter-from-class="translate-x-full"
+      enter-to-class="translate-x-0" leave-active-class="transition-transform duration-300 ease-in-out"
+      leave-from-class="translate-x-0" leave-to-class="translate-x-full">
+      <EmailDetailPage v-if="selectedEmail" :email="selectedEmail" :show="!!selectedEmail" @close="closeEmailDetail" />
+    </Transition>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { emailHelpers, apiHelpers } from '@/utils/utils';
-import Header from '@/views/components/Header.vue';
-import EmailModal from '@/views/EmailModal.vue';
-import PaginationControls from '@/views/components/PaginationControls.vue';
-import EmailList from '@/views/EmailList.vue';
-import LoadingSpinner from '@/views/components/LoadingSpinner.vue';
-import ErrorMessage from '@/views/components/ErrorMessage.vue';
-import EmptyState from '@/views/components/EmptyState.vue';
+import { createEmailObject } from '@/utils/emailStructure';
+import Header from '@/components/layout/Header.vue';
+import PaginationControls from '@/components/core/PaginationControls.vue';
+import EmailList from '@/components/email/EmailList.vue';
+import EmailDetailPage from '@/components/email/EmailDetailPage.vue';
 
 const router = useRouter();
 const emails = ref([]);
@@ -61,78 +79,27 @@ async function fetchEmails(pageToken = null) {
 
     if (result && result.emails) {
       const processedEmails = await Promise.all(result.emails.map(async email => {
+        // Try to get stored analyzed email first
         const storedEmail = await chrome.runtime.sendMessage({
           action: 'fetchEmailDetails',
           messageId: email.id
         });
 
         if (storedEmail && storedEmail.security) {
-          console.log('Using stored analyzed email:', storedEmail);
           return storedEmail;
         }
 
+        // Fetch and process new email
         const fullEmail = await emailHelpers.fetchEmailDetails(token, email.id);
-        console.log('Raw email before processing:', fullEmail);
+        const emailObject = createEmailObject(fullEmail);
 
-        const processedEmail = {
-          id: fullEmail.id,
-          content: {
-            body: emailHelpers.getEmailBody(fullEmail.payload),
-            htmlBody: emailHelpers.getEmailHtmlBody(fullEmail.payload),
-            sanitizedBody: emailHelpers.sanitizeEmailBody(emailHelpers.getEmailBody(fullEmail.payload)),
-            urls: emailHelpers.extractUrlsFromEmail(emailHelpers.getEmailBody(fullEmail.payload)),
-            rawPayload: fullEmail.payload
-          },
-          metadata: {
-            subject: fullEmail.payload?.headers?.find(h => h.name.toLowerCase() === 'subject')?.value || 'No Subject',
-            date: fullEmail.payload?.headers?.find(h => h.name.toLowerCase() === 'date')?.value,
-            snippet: fullEmail.snippet || 'No Snippet',
-            labels: fullEmail.labelIds || []
-          },
-          sender: {
-            address: fullEmail.payload?.headers?.find(h => h.name.toLowerCase() === 'from')?.value || '',
-            displayName: '',
-            domain: ''
-          },
-          raw: fullEmail,
-          security: {
-            authentication: {
-              spf: '',
-              dkim: '',
-              dmarc: '',
-              summary: ''
-            },
-            analysis: {
-              isFlagged: false,
-              linkRisks: [],
-              safeBrowsingResults: {
-                checkedUrls: 0,
-                threatenedUrls: 0,
-                results: []
-              }
-            },
-            flags: {
-              safebrowsingFlag: false,
-              hasExternalUrls: false,
-              hasMultipleRecipients: false,
-              hasSuspiciousPatterns: false,
-              hasUrlMismatches: false
-            }
-          }
-        };
-
-        // Send to background script for analysis
+        // Send for analysis
         const analyzedEmail = await chrome.runtime.sendMessage({
           action: 'analyzeEmail',
-          email: processedEmail
+          email: emailObject
         });
 
-        if (analyzedEmail && analyzedEmail.security) {
-          processedEmail.security = analyzedEmail.security;
-        }
-
-        console.log('Processed email with security:', processedEmail);
-        return processedEmail;
+        return analyzedEmail || emailObject;
       }));
 
       emails.value = [...emails.value, ...processedEmails];
@@ -176,14 +143,11 @@ function prevPage() {
   }
 }
 
-function openEmailModal(email) {
-  console.log('Opening modal with email:', email);
-  console.log('Security data:', email.security);
-  console.log('HTML Body:', email.content?.htmlBody);
+function openEmailDetail(email) {
   selectedEmail.value = email;
 }
 
-function closeEmailModal() {
+function closeEmailDetail() {
   selectedEmail.value = null;
 }
 
@@ -191,11 +155,6 @@ function logout() {
   chrome.storage.local.set({ loggedOut: true }, () => {
     router.push('/login');
   });
-}
-
-function openMetricsPage() {
-  const metricsUrl = chrome.runtime.getURL('metrics.html');
-  window.open(metricsUrl, '_blank');
 }
 
 onMounted(() => {
