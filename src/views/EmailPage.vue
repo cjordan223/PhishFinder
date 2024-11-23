@@ -14,8 +14,6 @@
           <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailModal" />
 
           <EmptyState v-else-if="!loading && !error" class="py-12" />
-
-
         </div>
       </div>
     </main>
@@ -63,16 +61,24 @@ async function fetchEmails(pageToken = null) {
 
     if (result && result.emails) {
       const processedEmails = await Promise.all(result.emails.map(async email => {
-        const fullEmail = await emailHelpers.fetchEmailDetails(token, email.id);
+        const storedEmail = await chrome.runtime.sendMessage({
+          action: 'fetchEmailDetails',
+          messageId: email.id
+        });
 
+        if (storedEmail && storedEmail.security) {
+          console.log('Using stored analyzed email:', storedEmail);
+          return storedEmail;
+        }
+
+        const fullEmail = await emailHelpers.fetchEmailDetails(token, email.id);
         console.log('Raw email before processing:', fullEmail);
 
-        // Preserve the original security data structure
         const processedEmail = {
           id: fullEmail.id,
           content: {
             body: emailHelpers.getEmailBody(fullEmail.payload),
-            htmlBody: emailHelpers.getEmailHtmlBody(fullEmail.payload), // Add this line
+            htmlBody: emailHelpers.getEmailHtmlBody(fullEmail.payload),
             sanitizedBody: emailHelpers.sanitizeEmailBody(emailHelpers.getEmailBody(fullEmail.payload)),
             urls: emailHelpers.extractUrlsFromEmail(emailHelpers.getEmailBody(fullEmail.payload)),
             rawPayload: fullEmail.payload
@@ -89,8 +95,41 @@ async function fetchEmails(pageToken = null) {
             domain: ''
           },
           raw: fullEmail,
-          security: fullEmail.security
+          security: {
+            authentication: {
+              spf: '',
+              dkim: '',
+              dmarc: '',
+              summary: ''
+            },
+            analysis: {
+              isFlagged: false,
+              linkRisks: [],
+              safeBrowsingResults: {
+                checkedUrls: 0,
+                threatenedUrls: 0,
+                results: []
+              }
+            },
+            flags: {
+              safebrowsingFlag: false,
+              hasExternalUrls: false,
+              hasMultipleRecipients: false,
+              hasSuspiciousPatterns: false,
+              hasUrlMismatches: false
+            }
+          }
         };
+
+        // Send to background script for analysis
+        const analyzedEmail = await chrome.runtime.sendMessage({
+          action: 'analyzeEmail',
+          email: processedEmail
+        });
+
+        if (analyzedEmail && analyzedEmail.security) {
+          processedEmail.security = analyzedEmail.security;
+        }
 
         console.log('Processed email with security:', processedEmail);
         return processedEmail;
@@ -138,6 +177,9 @@ function prevPage() {
 }
 
 function openEmailModal(email) {
+  console.log('Opening modal with email:', email);
+  console.log('Security data:', email.security);
+  console.log('HTML Body:', email.content?.htmlBody);
   selectedEmail.value = email;
 }
 

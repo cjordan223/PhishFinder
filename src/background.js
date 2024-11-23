@@ -112,7 +112,7 @@ class EmailProcessor {
         const basicEmailObject = createEmailObject(emailData);
         console.log('Created basic email object:', basicEmailObject);
 
-        // Send to backend for further analysis
+        // Send to backend for analysis
         const analyzedEmail = await this.sendToBackendForAnalysis(basicEmailObject);
         console.log('Received analyzed email from backend:', analyzedEmail);
 

@@ -23,11 +23,24 @@
 
                 <!-- Email Body -->
                 <div class="email-body-content prose max-w-none"
-                    v-html="email.content?.htmlBody || 'No content available'"></div>
+                    v-html="email.content?.htmlBody || email.content?.body || 'No content available'">
+                </div>
 
                 <!-- Security Analysis -->
-                <SecurityAnalysis :authentication="email.security?.authentication || {}"
-                    :analysis="email.security?.analysis || {}" :urls="email.content?.urls || []" />
+                <SecurityAnalysis :authentication="{
+                    spf: email.security?.authentication?.spf || '',
+                    dkim: email.security?.authentication?.dkim || '',
+                    dmarc: email.security?.authentication?.dmarc || '',
+                    summary: email.security?.authentication?.summary || ''
+                }" :analysis="{
+                        isFlagged: email.security?.analysis?.isFlagged || false,
+                        linkRisks: email.security?.analysis?.linkRisks || [],
+                        safeBrowsingResults: email.security?.analysis?.safeBrowsingResults || {
+                            checkedUrls: 0,
+                            threatenedUrls: 0,
+                            results: []
+                        }
+                    }" :urls="email.content?.urls || []" />
 
                 <!-- Update WhoisLookup component -->
                 <Transition>
@@ -72,31 +85,30 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 // Computed properties
-const formattedDate = computed(() => emailHelpers.formatDate(props.email.metadata?.date));
 const normalizedSender = computed(() => {
     const senderInfo = emailHelpers.parseSender(props.email?.sender?.address || '');
-    console.log('Parsed sender info:', senderInfo); // Debug log
     return senderInfo;
 });
+
+// State
+const isLoading = ref(false);
+const whoisLookup = ref(null);
+const showWhois = ref(false);
+const isWhoisMounted = ref(false);
 
 // Methods
 function close() {
     emit('close');
 }
 
-const isLoading = ref(false);
-
-const whoisLookup = ref(null);
-const showWhois = ref(false);
-const isWhoisMounted = ref(false);
-
 const toggleWhois = async () => {
     if (!showWhois.value) {
-        isWhoisMounted.value = false; // Reset mount state before showing
+        isWhoisMounted.value = false;
     }
     showWhois.value = !showWhois.value;
 };
 
+// Watchers
 watch(showWhois, (newVal) => {
     if (newVal && !isWhoisMounted.value) {
         isWhoisMounted.value = true;
@@ -107,9 +119,13 @@ watch(showWhois, (newVal) => {
 onMounted(() => {
     console.log('Email Modal Content:', {
         sender: normalizedSender.value,
-        security: props.email.security,
-        urls: props.email.content?.urls,
-        htmlBody: props.email.content?.htmlBody // Log the HTML body content
+        security: {
+            authentication: props.email?.security?.authentication,
+            analysis: props.email?.security?.analysis,
+            flags: props.email?.security?.flags
+        },
+        urls: props.email?.content?.urls,
+        htmlBody: props.email?.content?.htmlBody
     });
 });
 </script>

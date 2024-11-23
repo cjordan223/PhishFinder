@@ -1,125 +1,82 @@
 <template>
-    <div v-if="email"
-        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4">
-        <div class="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl">
-            <!-- Header -->
-            <div class="flex items-center justify-between p-6 border-b">
-                <h3 class="text-xl font-semibold text-gray-900">
-                    {{ email.metadata?.subject || 'No Subject' }}
-                </h3>
-                <button @click="close"
-                    class="text-gray-400 hover:bg-gray-100 hover:text-gray-900 rounded-lg p-2 transition-colors">
-                    <CloseIcon />
-                </button>
+    <div class="security-analysis bg-gray-50 rounded-lg p-4">
+        <!-- Authentication Status -->
+        <div class="authentication-status mb-4">
+            <h4 class="font-medium mb-2">Authentication Status</h4>
+            <div class="grid grid-cols-3 gap-2">
+                <AuthenticationBadge label="SPF" :status="getAuthStatus(authentication?.spf)"
+                    :tooltip="authentication?.spf || 'No SPF record'" />
+                <AuthenticationBadge label="DKIM" :status="getAuthStatus(authentication?.dkim)"
+                    :tooltip="authentication?.dkim || 'No DKIM record'" />
+                <AuthenticationBadge label="DMARC" :status="getAuthStatus(authentication?.dmarc)"
+                    :tooltip="authentication?.dmarc || 'No DMARC record'" />
             </div>
+        </div>
 
-            <!-- Content -->
-            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                <!-- Email Header Component -->
-                <EmailHeader :sender="{
-                    displayName: email.sender?.displayName || email.sender?.address?.split('@')[0] || 'Unknown Sender',
-                    address: email.sender?.address || 'no-address'
-                }" :date="emailHelpers.formatDate(email.metadata?.date) || 'No Date'" />
+        <!-- Analysis Results -->
+        <div class="analysis-results">
+            <h4 class="font-medium mb-2">Security Analysis</h4>
+            <RiskBadge :isFlagged="getAnalysisFlag" />
 
-                <!-- Email Body -->
-                <div class="email-body-content prose max-w-none">
-                    {{ email.content?.body || 'No content available' }}
-                </div>
-
-                <!-- Security Analysis -->
-                <SecurityAnalysis :authentication="email.security?.authentication || {}"
-                    :analysis="email.security?.analysis || {}" :urls="email.content?.urls || []" />
-
-                <!-- Update WhoisLookup component -->
-                <Transition>
-                    <WhoisLookup v-if="showWhois && isWhoisMounted" :domain="normalizedSender?.domain"
-                        :emailId="email.id" ref="whoisLookup" @mounted="isWhoisMounted = true" />
-                </Transition>
-            </div>
-
-            <!-- Footer -->
-            <div class="flex justify-end p-6 border-t bg-gray-50 rounded-b-xl">
-                <button @click="toggleWhois"
-                    class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors mr-2 flex items-center space-x-2"
-                    :disabled="!normalizedSender?.domain">
-                    <LoadingSpinner v-if="isLoading" class="w-5 h-5" />
-                    <span class="ml-2">{{ showWhois ? 'Hide WHOIS' : 'Show WHOIS' }}</span>
-                </button>
-                <button @click="close"
-                    class="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors">
-                    Close
-                </button>
+            <!-- URL Analysis -->
+            <div v-if="urls?.length > 0" class="mt-4">
+                <h5 class="font-medium mb-2">URLs Found</h5>
+                <ul class="space-y-2">
+                    <li v-for="url in urls" :key="url" class="flex items-center">
+                        <UrlStatusIcon :status="getUrlStatus(url)" />
+                        <span class="ml-2 text-sm">{{ url }}</span>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { emailHelpers } from '@/utils/utils';
-import SecurityAnalysis from './SecurityAnalysis.vue';
-import EmailHeader from './components/EmailHeader.vue';
-import CloseIcon from './icons/CloseIcon.vue';
-import LoadingSpinner from './components/LoadingSpinner.vue';
-import WhoisLookup from './WhoisLookup.vue';
+import { computed } from 'vue';
+import AuthenticationBadge from './components/AuthenticationBadge.vue';
+import RiskBadge from './components/RiskBadge.vue';
+import UrlStatusIcon from './components/UrlStatusIcon.vue';
 
 const props = defineProps({
-    email: {
+    authentication: {
         type: Object,
-        required: true
+        default: () => ({
+            spf: '',
+            dkim: '',
+            dmarc: '',
+            summary: ''
+        })
+    },
+    analysis: {
+        type: Object,
+        default: () => ({
+            isFlagged: false,
+            linkRisks: [],
+            safeBrowsingResults: {
+                checkedUrls: 0,
+                threatenedUrls: 0,
+                results: []
+            }
+        })
+    },
+    urls: {
+        type: Array,
+        default: () => []
     }
 });
 
-const emit = defineEmits(['close']);
-
-// Computed properties
-const formattedDate = computed(() => emailHelpers.formatDate(props.email.metadata?.date));
-const normalizedSender = computed(() => {
-    const senderInfo = emailHelpers.parseSender(props.email?.sender?.address || '');
-    console.log('Parsed sender info:', senderInfo); // Debug log
-    return senderInfo;
+const getAnalysisFlag = computed(() => {
+    return props.analysis?.isFlagged || false;
 });
 
-// Methods
-function close() {
-    emit('close');
+function getAuthStatus(value) {
+    if (!value) return null;
+    return value.toLowerCase().includes('pass') ? 'pass' : 'fail';
 }
 
-const isLoading = ref(false);
-
-const whoisLookup = ref(null);
-const showWhois = ref(false);
-const isWhoisMounted = ref(false);
-
-const toggleWhois = async () => {
-    if (!showWhois.value) {
-        isWhoisMounted.value = false; // Reset mount state before showing
-    }
-    showWhois.value = !showWhois.value;
-};
-
-watch(showWhois, (newVal) => {
-    if (newVal && !isWhoisMounted.value) {
-        isWhoisMounted.value = true;
-    }
-});
-
-// Debug logs
-onMounted(() => {
-    console.log('Email Modal Content:', {
-        sender: normalizedSender.value,
-        security: props.email.security,
-        urls: props.email.content?.urls
-    });
-});
+function getUrlStatus(url) {
+    const risk = props.analysis?.linkRisks?.find(risk => risk.url === url);
+    return risk?.isSuspicious ? 'suspicious' : 'safe';
+}
 </script>
-
-<style scoped>
-.email-body-content {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.5;
-    color: #374151;
-}
-</style>
