@@ -45,7 +45,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { emailHelpers, apiHelpers } from '@/utils/utils';
+import { emailHelpers, storageHelpers, apiHelpers } from '@/utils/utils';
 import { createEmailObject } from '@/utils/emailStructure';
 import Header from '@/components/layout/Header.vue';
 import PaginationControls from '@/components/core/PaginationControls.vue';
@@ -79,27 +79,31 @@ async function fetchEmails(pageToken = null) {
 
     if (result && result.emails) {
       const processedEmails = await Promise.all(result.emails.map(async email => {
-        // Try to get stored analyzed email first
-        const storedEmail = await chrome.runtime.sendMessage({
-          action: 'fetchEmailDetails',
-          messageId: email.id
-        });
-
-        if (storedEmail && storedEmail.security) {
-          return storedEmail;
-        }
-
         // Fetch and process new email
         const fullEmail = await emailHelpers.fetchEmailDetails(token, email.id);
         const emailObject = createEmailObject(fullEmail);
 
-        // Send for analysis
-        const analyzedEmail = await chrome.runtime.sendMessage({
-          action: 'analyzeEmail',
-          email: emailObject
+        console.log('🔍 Requesting standalone analysis for:', emailObject.id);
+        const analysis = await apiHelpers.getEmailAnalysis(email.id, {
+          sender: emailObject.sender,
+          subject: emailObject.metadata.subject,
+          body: emailObject.content.body,
+          htmlBody: emailObject.content.htmlBody,
+          timestamp: emailObject.metadata.date,
+          headers: emailObject.raw.payload.headers,
+          parts: emailObject.raw.payload.parts,
+          labels: emailObject.metadata.labels,
+          historyId: emailObject.raw.historyId,
+          internalDate: emailObject.raw.internalDate,
+          sizeEstimate: emailObject.raw.sizeEstimate,
+          rawPayload: emailObject.content.rawPayload
         });
 
-        return analyzedEmail || emailObject;
+        // Merge analysis with email object
+        return {
+          ...emailObject,
+          security: analysis?.security || null
+        };
       }));
 
       emails.value = [...emails.value, ...processedEmails];

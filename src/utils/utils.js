@@ -327,6 +327,8 @@ export const apiHelpers = {
   // created to resolve object passing issues. endpoint to return security data within the vue component. modifed version of main analysis without persistence
   async getEmailAnalysis(emailId, emailData) {
     try {
+      console.log('🔍 Vue Component: Requesting analysis for email:', emailId);
+      
       const response = await fetch(`http://localhost:8080/analysis/analyze-only/${emailId}`, {
         method: 'POST',
         headers: {
@@ -336,12 +338,20 @@ export const apiHelpers = {
       });
 
       if (!response.ok) {
+        console.error('❌ Vue Component: Analysis request failed:', response.status, response.statusText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ Vue Component: Analysis result:', {
+        emailId,
+        security: result.security,
+        flags: result.security?.analysis?.flags
+      });
+      
+      return result;
     } catch (error) {
-      console.error('Error fetching email analysis:', error);
+      console.error('❌ Vue Component: Analysis error:', error);
       return null;
     }
   }
