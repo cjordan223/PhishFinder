@@ -117,7 +117,7 @@ class EmailProcessor {
       console.log('Received analyzed email from backend:', analyzedEmail);
 
       // Save the analyzed email
-      await storageHelpers.saveAnalyzedEmail(messageId, analyzedEmail);
+      await storageHelpers.saveAnalyzedEmail(messageId, analyzedEmail);       
       await storageHelpers.markEmailAsProcessed(messageId);
 
       return analyzedEmail;
@@ -129,7 +129,7 @@ class EmailProcessor {
   // Send email object to backend for analysis
   async sendToBackendForAnalysis(emailObject) {
     try {
-      const response = await fetch('http://localhost:8080/analysis/analyze-email', {
+      const response = await fetch('http://localhost:8080/analysis/saveEmailAnalysis', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -140,15 +140,15 @@ class EmailProcessor {
           sender: emailObject.sender,
           subject: emailObject.metadata.subject,
           body: emailObject.content.body,
-          htmlBody: emailObject.content.htmlBody, // Include HTML body
+          htmlBody: emailObject.content.htmlBody,
           timestamp: emailObject.metadata.date,
           rawPayload: emailObject.content.rawPayload,
-          headers: emailObject.raw.payload.headers, // Include headers
-          parts: emailObject.raw.payload.parts, // Include parts
-          labels: emailObject.metadata.labels, // Include labels
-          historyId: emailObject.raw.historyId, // Include historyId
-          internalDate: emailObject.raw.internalDate, // Include internalDate
-          sizeEstimate: emailObject.raw.sizeEstimate // Include sizeEstimate
+          headers: emailObject.raw.payload.headers,
+          parts: emailObject.raw.payload.parts,
+          labels: emailObject.metadata.labels,
+          historyId: emailObject.raw.historyId,
+          internalDate: emailObject.raw.internalDate,
+          sizeEstimate: emailObject.raw.sizeEstimate
         })
       });
 
@@ -206,52 +206,56 @@ class EmailProcessor {
 
   // Handle incoming messages from the frontend
   async handleMessages(request, sender, sendResponse) {
-    if (request.action === 'fetchEmailDetails') {
-      this.handleFetchEmailDetails(request, sendResponse);
-      return true;
-    }
-    if (request.action === 'performWhoisLookup') {
-      this.handleWhoisLookup(request, sendResponse);
-      return true;
+    try {
+        if (request.action === 'fetchEmailDetails') {
+            const response = await this.handleFetchEmailDetails(request);
+            sendResponse(response);
+            return true; // Keep the message channel open
+        }
+        if (request.action === 'performWhoisLookup') {
+            const response = await this.handleWhoisLookup(request);
+            sendResponse(response);
+            return true; // Keep the message channel open
+        }
+        if (request.action === 'analyzeEmail') {
+            const response = await this.sendToBackendForAnalysis(request.email);
+            sendResponse(response);
+            return true; // Keep the message channel open
+        }
+    } catch (error) {
+        console.error('Error in handleMessages:', error);
+        sendResponse({ error: error.message });
+        return true; // Keep the message channel open even on error
     }
   }
 
   // Handle fetch email details request
-  async handleFetchEmailDetails(request, sendResponse) {
+  async handleFetchEmailDetails(request) {
     try {
-      const storedEmail = await storageHelpers.getAnalyzedEmail(request.messageId);
-      if (storedEmail) {
-        const normalizedEmail = this.normalizeEmailData(storedEmail);
-        console.log('Normalized email:', normalizedEmail);
-        sendResponse(normalizedEmail);
-        return;
-      }
+        const storedEmail = await storageHelpers.getAnalyzedEmail(request.messageId);
+        if (storedEmail) {
+            return this.normalizeEmailData(storedEmail);
+        }
 
-      const token = await apiHelpers.getAuthToken();
-      if (!token) {
-        sendResponse({ error: 'Failed to retrieve token' });
-        return;
-      }
+        const token = await apiHelpers.getAuthToken();
+        if (!token) {
+            return { error: 'Failed to retrieve token' };
+        }
 
-      const emailDetails = await emailHelpers.fetchEmailDetails(token, request.messageId);
-      console.log(`Fetched email details from Gmail for ID ${request.messageId}:`, emailDetails);
+        const emailDetails = await emailHelpers.fetchEmailDetails(token, request.messageId);
+        const analyzedEmail = await this.sendToBackendForAnalysis(emailDetails);
+        
+        await storageHelpers.saveAnalyzedEmail(request.messageId, analyzedEmail);
+        await storageHelpers.markEmailAsProcessed(request.messageId);
 
-      // Send to backend for analysis
-      const analyzedEmail = await this.sendToBackendForAnalysis(emailDetails);
-      console.log('Received analyzed email from backend:', analyzedEmail);
-
-      // Save the analyzed email
-      await storageHelpers.saveAnalyzedEmail(request.messageId, analyzedEmail);
-      await storageHelpers.markEmailAsProcessed(request.messageId);
-
-      sendResponse(analyzedEmail);
+        return analyzedEmail;
     } catch (error) {
-      console.error('Error handling fetch email details:', error);
-      sendResponse({ error: error.message });
+        console.error('Error handling fetch email details:', error);
+        return { error: error.message };
     }
   }
 
-  async handleWhoisLookup(request, sendResponse) {
+  async handleWhoisLookup(request) {
     try {
       const response = await fetch(`http://localhost:8080/whois/${request.domain}/${request.emailId}`, {
         method: 'POST',
@@ -270,16 +274,17 @@ class EmailProcessor {
       }
 
       const data = await response.json();
-      sendResponse({ success: true, data });
+      return { success: true, data };
     } catch (error) {
       console.error('WHOIS lookup error:', error);
-      sendResponse({ success: false, error: error.message });
+      return { success: false, error: error.message };
     }
   }
   normalizeEmailData(emailData) {
     if (!emailData) return null;
 
-    // Deep clone the security object to ensure we don't lose nested properties
+ 
+    
     const security = emailData.security ? {
         authentication: {
             spf: emailData.security.authentication?.spf || 'N/A',
@@ -290,10 +295,13 @@ class EmailProcessor {
         flags: emailData.security.flags || {}
     } : null;
 
-    return {
+ 
+    const normalized = {
         ...emailData,
         security
     };
+
+     return normalized;
 }
 }
 

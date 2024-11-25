@@ -322,5 +322,27 @@ export const apiHelpers = {
         });
       });
     });
+  },
+
+  // created to resolve object passing issues. endpoint to return security data within the vue component. modifed version of main analysis without persistence
+  async getEmailAnalysis(emailId, emailData) {
+    try {
+      const response = await fetch(`http://localhost:8080/analysis/analyze-only/${emailId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(emailData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching email analysis:', error);
+      return null;
+    }
   }
 };
