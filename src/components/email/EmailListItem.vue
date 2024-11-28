@@ -35,10 +35,17 @@ const props = defineProps({
 
 const emit = defineEmits(['open']);
 
-const securityInfo = computed(() => props.email.security || null);
+// Safely access security info with null checks
+const securityInfo = computed(() => {
+    const security = props.email?.security;
+    if (!security) return null;
 
-// Log security info
-console.log('Security Info:', securityInfo.value);
+    // Handle both nested and flat structures
+    return {
+        analysis: security.analysis || {},
+        authentication: security.authentication || {}
+    };
+});
 
 const securityStatus = computed(() => {
     if (!securityInfo.value) return 'unknown';
@@ -47,14 +54,12 @@ const securityStatus = computed(() => {
     return 'safe';
 });
 
-// Log security status
-console.log('Security Status:', securityStatus.value);
-
 const hasSecurityRisks = computed(() => {
     const analysis = securityInfo.value?.analysis;
-    return analysis?.linkRisks?.length > 0 ||
-        analysis?.suspiciousKeywords?.length > 0 ||
-        analysis?.urlMismatches?.length > 0;
+    if (!analysis) return false;
+    return (analysis.linkRisks?.length > 0) ||
+        (analysis.suspiciousKeywords?.length > 0) ||
+        (analysis.urlMismatches?.length > 0);
 });
 
 const securityTooltip = computed(() => {

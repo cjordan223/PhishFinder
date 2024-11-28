@@ -132,23 +132,25 @@ const props = defineProps({
 
 const showSecurityDetails = ref(false);
 
-const securityStatus = computed(() => {
-    if (!props.email.security) return 'unknown';
-    if (props.email.security.analysis?.isFlagged) return 'high-risk';
-    if (hasSecurityRisks.value) return 'warning';
-    return 'safe';
-});
-
+// Define hasSecurityRisks first since securityStatus depends on it
 const hasSecurityRisks = computed(() => {
-    const analysis = props.email.security?.analysis;
+    const analysis = props.email?.security?.analysis;
     return analysis?.linkRisks?.length > 0 ||
         analysis?.suspiciousKeywords?.length > 0 ||
         analysis?.urlMismatches?.length > 0;
 });
 
+// Now define securityStatus which uses hasSecurityRisks
+const securityStatus = computed(() => {
+    if (!props.email?.security) return 'unknown';
+    if (props.email?.security?.analysis?.isFlagged) return 'high-risk';
+    if (hasSecurityRisks.value) return 'warning';
+    return 'safe';
+});
+
 const securityTooltip = computed(() => {
-    if (!props.email.security) return 'Security scan pending';
-    if (props.email.security.analysis?.isFlagged) return 'High-risk email detected';
+    if (!props.email?.security) return 'Security scan pending';
+    if (props.email?.security?.analysis?.isFlagged) return 'High-risk email detected';
     if (hasSecurityRisks.value) return 'Potential security risks detected';
     return 'No security risks detected';
 });
