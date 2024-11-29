@@ -1,20 +1,21 @@
 <!-- PaginationControls.vue -->
 <template>
-    <div>
-        <button @click.prevent="prevPage" :disabled="currentPage === 1" class="arrow-button left"
-            aria-label="Previous page">
-            <!-- Left arrow icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-        </button>
-        <button @click.prevent="nextPage" :disabled="nextPageDisabled" class="arrow-button right"
-            aria-label="Next page">
-            <!-- Right arrow icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-        </button>
+    <div class="fixed top-1/2 w-full px-4 -translate-y-1/2 pointer-events-none">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <button @click="$emit('prevPage')" :disabled="currentPage === 1"
+                class="pointer-events-auto w-8 h-8 flex items-center justify-center text-gray-700 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+
+            <button @click="$emit('nextPage')" :disabled="nextPageDisabled"
+                class="pointer-events-auto w-8 h-8 flex items-center justify-center text-gray-700 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
     </div>
 </template>
 

@@ -5,17 +5,17 @@
             <div class="flex-grow">
                 <div class="flex items-center gap-2">
                     <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" />
-                    <h3 class="font-medium">{{ email.metadata?.subject }}</h3>
+                    <h3 class="font-medium">{{ senderDisplay }}</h3>
                 </div>
 
                 <div class="flex items-center gap-2 mt-1">
-                    <span class="text-sm text-gray-600">{{ senderDisplay }}</span>
+                    <span class="text-sm text-gray-600">{{ email.metadata?.subject }}</span>
                     <span v-if="hasUrlMismatches" class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">
                         URL Mismatch Detected
                     </span>
                 </div>
 
-                <p class="text-sm text-gray-500 mt-1">{{ email.metadata?.snippet }}</p>
+                <p class="text-sm text-gray-500 mt-1 line-clamp-1">{{ email.metadata?.snippet }}</p>
             </div>
             <span class="text-sm text-gray-500">{{ formattedDate }}</span>
         </div>

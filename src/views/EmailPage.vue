@@ -1,45 +1,45 @@
 <template>
-  <div class="relative min-h-screen">
-    <!-- Main email list -->
-    <div
-      class="min-h-screen bg-gradient-to-br from-primary-light to-primary-dark w-full transform transition-all duration-300 ease-in-out"
-      :class="{ 'filter blur-sm translate-x-[-100%]': selectedEmail }">
-      <Header @logout="logout" class="fixed top-0 w-full z-10" />
+  <div class="h-[600px] w-[450px] flex flex-col bg-gradient-to-br from-primary-light to-primary-dark">
+    <Header @logout="logout" class="flex-none" />
 
-      <main class="w-full pt-20 pb-8">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 w-full">
-            <!-- Loading state -->
-            <div v-if="loading" class="flex justify-center my-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+    <!-- Main content area -->
+    <main class="flex-1 p-4 overflow-hidden relative">
+      <div class="h-full">
+        <div class="h-full bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 flex flex-col">
+          <!-- Loading state -->
+          <div v-if="loading" class="flex-1 flex justify-center items-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
 
-            <!-- Error state -->
-            <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-4">
-              {{ errorMessage }}
-            </div>
+          <!-- Error state -->
+          <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {{ errorMessage }}
+          </div>
 
+          <div v-if="!loading" class="flex-1 flex flex-col min-h-0">
             <PaginationControls v-if="emails.length > 0" :currentPage="currentPage"
-              :nextPageDisabled="isNextPageDisabled" @prevPage="prevPage" @nextPage="nextPage" class="mb-6" />
+              :nextPageDisabled="isNextPageDisabled" @prevPage="prevPage" @nextPage="nextPage" />
 
-            <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails"
-              @open="openEmailDetail" />
+            <div class="flex-1 overflow-auto">
+              <EmailList v-if="paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailDetail" />
 
-            <!-- Empty state -->
-            <div v-else-if="!loading && !error" class="text-center py-12 text-gray-500">
-              No emails found
+              <!-- Empty state -->
+              <div v-else-if="!error" class="text-center py-12 text-gray-500">
+                No emails found
+              </div>
             </div>
           </div>
         </div>
-      </main>
-    </div>
-
-    <Transition enter-active-class="transition-transform duration-300 ease-in-out" enter-from-class="translate-x-full"
-      enter-to-class="translate-x-0" leave-active-class="transition-transform duration-300 ease-in-out"
-      leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-      <EmailDetailPage v-if="selectedEmail" :email="selectedEmail" :show="!!selectedEmail" @close="closeEmailDetail" />
-    </Transition>
+      </div>
+    </main>
   </div>
+
+  <!-- Email detail overlay -->
+  <Transition enter-active-class="transition-transform duration-300 ease-in-out" enter-from-class="translate-x-full"
+    enter-to-class="translate-x-0" leave-active-class="transition-transform duration-300 ease-in-out"
+    leave-from-class="translate-x-0" leave-to-class="translate-x-full">
+    <EmailDetailPage v-if="selectedEmail" :email="selectedEmail" :show="!!selectedEmail" @close="closeEmailDetail" />
+  </Transition>
 </template>
 
 <script setup>
@@ -167,8 +167,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.bg-gradient {
-  min-height: 100vh;
-  background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);
-}
+/* Remove the .bg-gradient class entirely */
 </style>
