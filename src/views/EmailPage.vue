@@ -3,9 +3,9 @@
     <Header @logout="logout" class="flex-none" />
 
     <!-- Main content area -->
-    <main class="flex-1 p-4 overflow-hidden relative">
+    <main class="flex-1 p-2 overflow-hidden relative">
       <div class="h-full">
-        <div class="h-full bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 flex flex-col">
+        <div class="h-full bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-3 flex flex-col">
           <!-- Loading state -->
           <div v-if="loading" class="flex-1 flex justify-center items-center">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

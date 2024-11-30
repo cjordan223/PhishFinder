@@ -1,30 +1,23 @@
 <template>
-    <li @click="openEmail" class="p-4 bg-white shadow rounded-lg cursor-pointer hover:shadow-lg transition"
+    <div @click="openEmail" class="cursor-pointer p-3 hover:bg-gray-50 border-b last:border-b-0 transition-colors"
         :class="{ 'is-flagged': isFlagged }">
-        <div class="flex justify-between items-start">
-            <div class="flex-grow">
-                <div class="flex items-center gap-2">
-                    <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" />
-                    <h3 class="font-medium">{{ senderDisplay }}</h3>
+        <div class="flex items-center justify-between gap-2">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" class="flex-shrink-0" />
+                    <h3 class="font-medium text-gray-900 truncate">{{ email.metadata?.subject }}</h3>
                 </div>
-
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="text-sm text-gray-600">{{ email.metadata?.subject }}</span>
-                    <span v-if="hasUrlMismatches" class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">
-                        URL Mismatch Detected
-                    </span>
-                </div>
-
-                <p class="text-sm text-gray-500 mt-1 line-clamp-1">{{ email.metadata?.snippet }}</p>
+                <p class="text-sm text-gray-600 truncate" v-html="sanitizedSnippet"></p>
             </div>
-            <span class="text-sm text-gray-500">{{ formattedDate }}</span>
+            <span class="text-sm text-gray-500 whitespace-nowrap">{{ formattedDate }}</span>
         </div>
-    </li>
+    </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
 import SecurityBadge from '../security/SecurityBadge.vue';
+import DOMPurify from 'dompurify';
 
 const props = defineProps({
     email: {
@@ -40,26 +33,54 @@ const securityInfo = computed(() => {
     const security = props.email?.security;
     if (!security) return null;
 
-    // Handle both nested and flat structures
+    // Ensure we have the full security object structure
     return {
-        analysis: security.analysis || {},
-        authentication: security.authentication || {}
+        analysis: {
+            ...security.analysis,
+            isFlagged: security.analysis?.isFlagged || false,
+            suspiciousKeywords: security.analysis?.suspiciousKeywords || [],
+            linkRisks: security.analysis?.linkRisks || [],
+            urlMismatches: security.analysis?.urlMismatches || [],
+            safeBrowsingResult: security.analysis?.safeBrowsingResult || []
+        },
+        authentication: security.authentication || {},
+        behavioral: security.behavioral || {}
     };
 });
 
 const securityStatus = computed(() => {
     if (!securityInfo.value) return 'unknown';
-    if (securityInfo.value.analysis?.isFlagged) return 'high-risk';
-    if (hasSecurityRisks.value) return 'warning';
-    return 'safe';
+
+    const analysis = securityInfo.value.analysis;
+    const auth = securityInfo.value.authentication;
+
+    // Check for high-risk conditions
+    if (analysis?.isFlagged || analysis?.safeBrowsingResult?.length > 0) {
+        return 'high-risk';
+    }
+
+    // Check for warning/caution conditions
+    if (hasSecurityRisks.value || auth?.summary?.includes('Fail')) {
+        return 'warning';
+    }
+
+    // Check for secure conditions
+    const allAuthPassed = auth?.summary?.toLowerCase().includes('pass');
+    if (allAuthPassed && !hasSecurityRisks.value) {
+        return 'secure';
+    }
+
+    return 'unknown';
 });
 
 const hasSecurityRisks = computed(() => {
     const analysis = securityInfo.value?.analysis;
-    if (!analysis) return false;
-    return (analysis.linkRisks?.length > 0) ||
-        (analysis.suspiciousKeywords?.length > 0) ||
-        (analysis.urlMismatches?.length > 0);
+    const auth = securityInfo.value?.authentication;
+
+    return (analysis?.linkRisks?.some(risk => risk.isSuspicious)) ||
+        (analysis?.suspiciousKeywords?.length > 0) ||
+        (analysis?.urlMismatches?.length > 0) ||
+        (auth?.summary?.includes('Fail'));
 });
 
 const securityTooltip = computed(() => {
@@ -87,6 +108,10 @@ const openEmail = () => {
 
 const isFlagged = computed(() => securityInfo.value?.analysis?.isFlagged || false);
 const hasUrlMismatches = computed(() => securityInfo.value?.analysis?.urlMismatches?.length > 0);
+
+const sanitizedSnippet = computed(() => {
+    return DOMPurify.sanitize(props.email?.metadata?.snippet || '');
+});
 </script>
 
 <style scoped>

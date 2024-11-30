@@ -1,14 +1,28 @@
 <template>
-    <div class="flex gap-2">
-        <span class="auth-pill" :class="spfClass" title="Sender Policy Framework">
-            SPF: {{ spfStatus }}
-        </span>
-        <span class="auth-pill" :class="dkimClass" title="DomainKeys Identified Mail">
-            DKIM: {{ dkimStatus }}
-        </span>
-        <span class="auth-pill" :class="dmarcClass" title="Domain-based Message Authentication">
-            DMARC: {{ dmarcStatus }}
-        </span>
+    <div class="flex flex-col space-y-2">
+        <div class="flex items-center space-x-2" v-if="props.spf">
+            <span class="auth-pill" :class="spfClass">SPF: {{ spfStatus }}</span>
+            <button @click="showSpfInfo = !showSpfInfo" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-info-circle"></i>
+            </button>
+            <div v-if="showSpfInfo" class="auth-tooltip">{{ props.spf }}</div>
+        </div>
+
+        <div class="flex items-center space-x-2" v-if="props.dkim">
+            <span class="auth-pill" :class="dkimClass">DKIM: {{ dkimStatus }}</span>
+            <button @click="showDkimInfo = !showDkimInfo" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-info-circle"></i>
+            </button>
+            <div v-if="showDkimInfo" class="auth-tooltip">{{ props.dkim }}</div>
+        </div>
+
+        <div class="flex items-center space-x-2" v-if="props.dmarc">
+            <span class="auth-pill" :class="dmarcClass">DMARC: {{ dmarcStatus }}</span>
+            <button @click="showDmarcInfo = !showDmarcInfo" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-info-circle"></i>
+            </button>
+            <div v-if="showDmarcInfo" class="auth-tooltip">{{ props.dmarc }}</div>
+        </div>
     </div>
 </template>
 
