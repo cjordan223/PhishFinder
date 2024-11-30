@@ -4,15 +4,15 @@
         <!-- Header with back button -->
         <div class="sticky top-0 z-10 bg-white border-b shadow-sm">
             <div class="flex items-center justify-between p-4">
-                <div class="flex items-center">
-                    <button @click="$emit('close')" class="p-2 hover:bg-gray-100 rounded-full mr-4">
+                <div class="flex items-center flex-1 min-w-0">
+                    <button @click="$emit('close')" class="p-2 hover:bg-gray-100 rounded-full mr-4 flex-shrink-0">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <h1 class="text-xl font-semibold truncate">{{ email.metadata?.subject || 'No Subject' }}</h1>
+                    <h1 class="text-xl font-semibold truncate pr-4">{{ email.metadata?.subject || 'No Subject' }}</h1>
                 </div>
-                <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" />
+                <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" class="flex-shrink-0" />
             </div>
 
             <!-- Security Analysis Section -->
@@ -91,9 +91,9 @@
             <!-- Sender info -->
             <div class="mb-4">
                 <div class="flex items-center gap-2">
-                    <span class="font-medium">{{ email.sender?.displayName || email.sender?.address?.split('@')[0]
-                        }}</span>
-                    <span class="text-gray-500">&lt;{{ email.sender?.address }}&gt;</span>
+                    <span class="font-medium truncate">{{ email.sender?.displayName ||
+                        email.sender?.address?.split('@')[0] }}</span>
+                    <span class="text-gray-500 truncate">&lt;{{ email.sender?.address }}&gt;</span>
                 </div>
                 <div class="text-gray-500 text-sm">
                     {{ formatDate(email.metadata?.date) || 'No date' }}
@@ -102,9 +102,8 @@
 
             <!-- Email body -->
             <div class="email-body-content prose max-w-none bg-white rounded-lg border p-6">
-                <div v-if="email.content?.htmlBody" v-html="sanitizeContent(email.content.htmlBody)"
-                    class="rendered-html">
-                </div>
+                <div v-if="email.content?.htmlBody" v-html="sanitizeAndStyleContent(email.content.htmlBody)"
+                    class="rendered-html"></div>
                 <div v-else-if="email.content?.body" class="whitespace-pre-wrap">{{ email.content.body }}</div>
                 <div v-else class="text-gray-500 italic">No content available</div>
             </div>
@@ -166,10 +165,40 @@ const formatThreatType = (threatType) => {
     ).join(' ');
 };
 
-const sanitizeContent = (content) => {
+function sanitizeAndStyleContent(content) {
     if (typeof content === 'object') {
         return DOMPurify.sanitize(JSON.stringify(content, null, 2));
     }
-    return DOMPurify.sanitize(content || '');
-};
+
+    // Add default styles to ensure proper rendering
+    const styledContent = `
+        <div style="font-family: system-ui, -apple-system, sans-serif; color: #374151; line-height: 1.5;">
+            ${content}
+        </div>
+    `;
+
+    return DOMPurify.sanitize(styledContent, {
+        ALLOWED_TAGS: ['a', 'b', 'br', 'div', 'p', 'span', 'strong', 'em', 'i', 'u', 'ul', 'ol', 'li', 'img'],
+        ALLOWED_ATTR: ['href', 'style', 'src', 'alt', 'class'],
+        ALLOW_DATA_ATTR: false
+    });
+}
 </script>
+
+<style scoped>
+.rendered-html {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.rendered-html img {
+    max-width: 100%;
+    height: auto;
+}
+
+.rendered-html a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+</style>

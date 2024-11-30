@@ -1,6 +1,9 @@
 <template>
     <div @click="openEmail" class="cursor-pointer p-3 hover:bg-gray-50 border-b last:border-b-0 transition-colors"
-        :class="{ 'is-flagged': isFlagged }">
+        :class="{
+            'bg-red-50 border border-red-200': securityStatus === 'high-risk',
+            'bg-yellow-50 border border-yellow-200': securityStatus === 'warning'
+        }">
         <div class="flex items-center justify-between gap-2">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">

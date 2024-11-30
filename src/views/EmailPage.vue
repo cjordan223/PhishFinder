@@ -3,31 +3,24 @@
     <Header @logout="logout" class="flex-none" />
 
     <!-- Main content area -->
-    <main class="flex-1 p-2 overflow-hidden relative">
-      <div class="h-full">
-        <div class="h-full bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-3 flex flex-col">
-          <!-- Loading state -->
-          <div v-if="loading" class="flex-1 flex justify-center items-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+    <main class="flex-1 overflow-hidden">
+      <div class="h-full bg-white/90 backdrop-blur-sm rounded-xl shadow-xl flex flex-col">
+        <!-- Loading state -->
+        <div v-if="loading" class="flex-1 flex justify-center items-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
 
-          <!-- Error state -->
-          <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ errorMessage }}
-          </div>
+        <!-- Error state -->
+        <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {{ errorMessage }}
+        </div>
 
-          <div v-if="!loading" class="flex-1 flex flex-col min-h-0">
-            <PaginationControls v-if="emails.length > 0" :currentPage="currentPage"
-              :nextPageDisabled="isNextPageDisabled" @prevPage="prevPage" @nextPage="nextPage" />
+        <div v-if="!loading" class="flex-1 flex flex-col min-h-0">
+          <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="isNextPageDisabled"
+            :totalPages="totalPages" @prevPage="prevPage" @nextPage="nextPage" @goToPage="goToPage" />
 
-            <div class="flex-1 overflow-auto">
-              <EmailList v-if="paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailDetail" />
-
-              <!-- Empty state -->
-              <div v-else-if="!error" class="text-center py-12 text-gray-500">
-                No emails found
-              </div>
-            </div>
+          <div class="flex-1 overflow-auto">
+            <EmailList v-if="paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailDetail" />
           </div>
         </div>
       </div>
@@ -60,12 +53,16 @@ const error = ref(false);
 const errorMessage = ref('');
 const selectedEmail = ref(null);
 const currentPage = ref(1);
-const emailsPerPage = 5;
+const emailsPerPage = 6;
 const nextPageToken = ref(null);
 const cache = new Map();
 
 const isNextPageDisabled = computed(() => {
   return !nextPageToken.value && currentPage.value * emailsPerPage >= emails.value.length;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(emails.value.length / emailsPerPage);
 });
 
 async function fetchEmails(pageToken = null) {
@@ -159,6 +156,11 @@ function logout() {
   chrome.storage.local.set({ loggedOut: true }, () => {
     router.push('/login');
   });
+}
+
+function goToPage(page) {
+  currentPage.value = page;
+  paginateEmails();
 }
 
 onMounted(() => {
