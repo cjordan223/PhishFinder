@@ -87,11 +87,16 @@ function getStatus(value) {
 
   // For DMARC
   if (value.includes('v=dmarc1')) {
-    return value.includes('p=none') ? 'neutral' : 'pass';
+    // p=reject is the strongest policy, should be pass
+    if (value.includes('p=reject')) return 'pass';
+    // p=quarantine is also good, should be pass
+    if (value.includes('p=quarantine')) return 'pass';
+    // p=none is monitoring only, should be neutral
+    if (value.includes('p=none')) return 'neutral';
   }
 
   // For DKIM
-  if (value.includes('no dkim record')) return 'neutral';
+  if (value.includes('no dkim record')) return 'pass'; // Changed from neutral to pass
 
   return 'neutral';
 }

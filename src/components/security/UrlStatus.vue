@@ -1,5 +1,20 @@
 <template>
     <div>
+        <div class="flex items-start gap-3">
+            <h3 class="text-sm font-medium text-gray-700 group relative cursor-help">
+                External URLs ({{ risks.length }})
+                <div class="absolute left-0 top-full mt-1 w-80 p-3 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                    <p class="font-medium mb-2">About External Links</p>
+                    <p class="mb-2">External links are normal in emails, but they can pose risks:</p>
+                    <ul class="space-y-1 list-disc pl-4">
+                        <li>Verify the sender's identity before clicking</li>
+                        <li>Hover over links to preview their destination</li>
+                        <li>Be cautious of unexpected or urgent requests</li>
+                        <li>Check for subtle misspellings in domain names</li>
+                    </ul>
+                </div>
+            </h3>
+        </div>
         <!-- Suspicious URLs Section -->
         <div v-if="suspiciousUrls.length" class="url-risks mb-4">
             <div class="flex items-center justify-between text-sm font-medium text-red-600 mb-1 cursor-pointer"
@@ -26,9 +41,22 @@
 
         <!-- External URLs Section -->
         <div v-if="externalUrls.length" class="external-urls">
-            <div class="flex items-center justify-between text-sm font-medium text-gray-600 mb-1 cursor-pointer"
-                @click="isExternalOpen = !isExternalOpen">
-                <span>External URLs ({{ externalUrls.length }})</span>
+            <div class="flex items-center justify-between text-sm mb-1 cursor-pointer" @click="isExternalOpen = !isExternalOpen">
+                <div class="flex items-start gap-3">
+                    <h3 class="text-sm font-medium text-gray-700 group relative cursor-help">
+                        External URLs ({{ externalUrls.length }})
+                        <div class="absolute left-0 top-full mt-1 w-80 p-3 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                            <p class="font-medium mb-2">About External Links</p>
+                            <p class="mb-2">External links are normal in emails, but they can pose risks:</p>
+                            <ul class="space-y-1 list-disc pl-4">
+                                <li>Verify the sender's identity before clicking</li>
+                                <li>Hover over links to preview their destination</li>
+                                <li>Be cautious of unexpected or urgent requests</li>
+                                <li>Check for subtle misspellings in domain names</li>
+                            </ul>
+                        </div>
+                    </h3>
+                </div>
                 <svg class="w-4 h-4 transform transition-transform" :class="{ 'rotate-180': isExternalOpen }" fill="none"
                     stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />

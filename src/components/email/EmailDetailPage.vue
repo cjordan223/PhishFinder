@@ -36,7 +36,21 @@
                                     <!-- Suspicious Keywords Section -->
                                     <div v-if="email.security?.analysis?.suspiciousKeywords?.length" 
                                         class="bg-gray-50 p-4 rounded-lg">
-                                        <h3 class="text-sm font-medium text-amber-600 mb-2">Suspicious Keywords</h3>
+                                        <div class="flex items-start gap-2">
+                                            <h3 class="text-sm font-medium text-amber-600 group relative cursor-help">
+                                                Suspicious Keywords
+                                                <div class="absolute left-0 top-full mt-1 w-80 p-3 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                                                    <p class="font-medium mb-2">About Suspicious Keywords</p>
+                                                    <p class="mb-2">Keywords are analyzed for potentially suspicious patterns:</p>
+                                                    <ul class="space-y-1 list-disc pl-4">
+                                                        <li>Common in phishing but also legitimate emails</li>
+                                                        <li>Not inherently malicious</li>
+                                                        <li>Consider the overall context</li>
+                                                        <li>Verify sender if something feels off</li>
+                                                    </ul>
+                                                </div>
+                                            </h3>
+                                        </div>
                                         <div v-for="(category, index) in email.security.analysis.suspiciousKeywords" 
                                             :key="index" 
                                             class="mb-2">
