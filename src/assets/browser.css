@@ -1,0 +1,25 @@
+/* Reset extension-specific constraints for browser pages */
+body.browser-view {
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body.browser-view #browser-app {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+}
+
+/* Remove any max-width constraints from containers in browser view */
+.browser-view .max-w-7xl {
+  max-width: none !important;
+}
+
+/* Override any extension-specific styles */
+.browser-view * {
+  box-sizing: border-box;
+}

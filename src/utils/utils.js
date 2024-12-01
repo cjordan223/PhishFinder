@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import he from 'he';
 
 // Initialize DOMPurify with the extension's window object if available
 const purify = typeof window !== 'undefined' ? DOMPurify(window) : {
@@ -160,42 +161,30 @@ export const emailHelpers = {
   },
 
   async fetchEmailBatch(token, pageToken = null) {
-    try {
-      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-      url.searchParams.append('maxResults', '20');
-      if (pageToken) {
+    const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+    url.searchParams.append('maxResults', '20');
+    url.searchParams.append('labelIds', 'INBOX');
+    url.searchParams.append('q', 'category:primary');
+    if (pageToken) {
         url.searchParams.append('pageToken', pageToken);
-      }
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch emails: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Fetch details for each email
-      const emailPromises = data.messages.map(msg => 
-        this.fetchEmailDetails(token, msg.id)
-      );
-      
-      const emails = await Promise.all(emailPromises);
-      const validEmails = emails.filter(email => email != null);
-
-      return {
-        emails: validEmails,
-        nextPageToken: data.nextPageToken || null
-      };
-    } catch (error) {
-      console.error('Error fetching email batch:', error);
-      throw error;
     }
+
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+        emails: data.messages || [],
+        nextPageToken: data.nextPageToken
+    };
   },
 
   // Add this helper method to store both HTML and plain text versions
@@ -220,6 +209,40 @@ export const emailHelpers = {
     }
 
     return content;
+  },
+
+  decodeHtmlEntities(text) {
+    if (!text) return '';
+    return he.decode(text).replace(/\s+/g, ' ').trim();
+  },
+
+  createEmailObject(emailData) {
+    const headers = emailData.payload.headers;
+    const subject = this.decodeHtmlEntities(
+        headers.find(h => h.name.toLowerCase() === 'subject')?.value || 'No Subject'
+    );
+    const snippet = this.decodeHtmlEntities(emailData.snippet || '')
+        .replace(/\s+/g, ' ')  // Normalize whitespace
+        .trim();
+    
+    // Create the base email object with properly decoded text
+    const emailObject = {
+        id: emailData.id,
+        threadId: emailData.threadId,
+        raw: emailData,
+        metadata: {
+            subject,
+            snippet,
+            date: new Date(parseInt(emailData.internalDate)).toISOString(),
+            labels: emailData.labelIds || []
+        },
+        sender: this.parseSender(
+            this.decodeHtmlEntities(headers.find(h => h.name.toLowerCase() === 'from')?.value || '')
+        ),
+        content: this.extractContent(emailData.payload)
+    };
+
+    return emailObject;
   }
 };
 
@@ -343,10 +366,11 @@ export const apiHelpers = {
       }
 
       const result = await response.json();
-      console.log('✅ Vue Component: Analysis result:', {
-        emailId,
-        security: result.security,
-        flags: result.security?.analysis?.flags
+      console.log('📧 Analysis Response Structure:', {
+        hasSecurityField: !!result.security,
+        hasAnalysisField: !!result.security?.analysis,
+        flagsArray: result.security?.analysis?.flags,
+        fullResult: result
       });
       
       return result;

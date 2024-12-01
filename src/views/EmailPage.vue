@@ -1,44 +1,55 @@
 <template>
-  <div class="relative min-h-screen">
-    <!-- Main email list -->
-    <div
-      class="min-h-screen bg-gradient-to-br from-primary-light to-primary-dark w-full transform transition-all duration-300 ease-in-out"
-      :class="{ 'filter blur-sm translate-x-[-100%]': selectedEmail }">
-      <Header @logout="logout" class="fixed top-0 w-full z-10" />
-
-      <main class="w-full pt-20 pb-8">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div class="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 w-full">
-            <!-- Loading state -->
-            <div v-if="loading" class="flex justify-center my-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-
-            <!-- Error state -->
-            <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-4">
-              {{ errorMessage }}
-            </div>
-
-            <PaginationControls v-if="emails.length > 0" :currentPage="currentPage"
-              :nextPageDisabled="isNextPageDisabled" @prevPage="prevPage" @nextPage="nextPage" class="mb-6" />
-
-            <EmailList v-if="!loading && paginatedEmails.length > 0" :emails="paginatedEmails"
-              @open="openEmailDetail" />
-
-            <!-- Empty state -->
-            <div v-else-if="!loading && !error" class="text-center py-12 text-gray-500">
-              No emails found
-            </div>
-          </div>
+  <div class="h-screen flex flex-col overflow-hidden">
+    <Header class="flex-none" />
+    
+    <div class="flex-1 flex overflow-hidden">
+      <div class="flex-1 flex flex-col min-w-0">
+        <!-- Pagination controls -->
+        <div class="flex-none p-2 border-b">
+          <PaginationControls 
+            :currentPage="currentPage"
+            :totalPages="totalPages"
+            :nextPageDisabled="isNextPageDisabled"
+            @prevPage="prevPage"
+            @nextPage="nextPage"
+            @goToPage="handlePageChange"
+          />
         </div>
-      </main>
-    </div>
 
-    <Transition enter-active-class="transition-transform duration-300 ease-in-out" enter-from-class="translate-x-full"
-      enter-to-class="translate-x-0" leave-active-class="transition-transform duration-300 ease-in-out"
-      leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-      <EmailDetailPage v-if="selectedEmail" :email="selectedEmail" :show="!!selectedEmail" @close="closeEmailDetail" />
-    </Transition>
+        <!-- Email list with transition -->
+        <div class="flex-1 relative">
+          <TransitionGroup
+            name="list"
+            tag="div"
+            class="relative"
+          >
+            <EmailList 
+              :key="currentPage"
+              v-if="paginatedEmails.length > 0" 
+              :emails="paginatedEmails" 
+              @open="openEmailDetail" 
+            />
+          </TransitionGroup>
+        </div>
+      </div>
+
+      <!-- Email detail overlay -->
+      <Transition
+        enter-active-class="transition-transform duration-300 ease-in-out"
+        enter-from-class="translate-x-full"
+        enter-to-class="translate-x-0"
+        leave-active-class="transition-transform duration-300 ease-in-out"
+        leave-from-class="translate-x-0"
+        leave-to-class="translate-x-full"
+      >
+        <EmailDetailPage
+          v-if="selectedEmail"
+          :email="selectedEmail"
+          :show="!!selectedEmail"
+          @close="closeEmailDetail"
+        />
+      </Transition>
+    </div>
   </div>
 </template>
 
@@ -60,12 +71,16 @@ const error = ref(false);
 const errorMessage = ref('');
 const selectedEmail = ref(null);
 const currentPage = ref(1);
-const emailsPerPage = 5;
+const emailsPerPage = 7;
 const nextPageToken = ref(null);
 const cache = new Map();
 
 const isNextPageDisabled = computed(() => {
   return !nextPageToken.value && currentPage.value * emailsPerPage >= emails.value.length;
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(emails.value.length / emailsPerPage);
 });
 
 async function fetchEmails(pageToken = null) {
@@ -123,26 +138,43 @@ function paginateEmails() {
   const startIndex = (currentPage.value - 1) * emailsPerPage;
   const endIndex = startIndex + emailsPerPage;
 
+  // If we don't have enough emails for this page, fetch more
+  if (endIndex > emails.value.length && nextPageToken.value) {
+    fetchEmails(nextPageToken.value);
+    return;
+  }
+
   if (cache.has(currentPage.value)) {
     paginatedEmails.value = cache.get(currentPage.value);
   } else {
-    paginatedEmails.value = emails.value.slice(startIndex, endIndex);
-    cache.set(currentPage.value, paginatedEmails.value);
-  }
-}
-
-function nextPage() {
-  if (currentPage.value * emailsPerPage < emails.value.length) {
-    currentPage.value++;
-    paginateEmails();
-  } else if (nextPageToken.value) {
-    fetchEmails(nextPageToken.value);
+    const pageEmails = emails.value.slice(startIndex, endIndex);
+    
+    // Only set and cache if we have a full page or no more emails to fetch
+    if (pageEmails.length === emailsPerPage || !nextPageToken.value) {
+      paginatedEmails.value = pageEmails;
+      cache.set(currentPage.value, pageEmails);
+    }
   }
 }
 
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value--;
+    paginateEmails();
+  }
+}
+
+async function nextPage() {
+  const nextPageStart = currentPage.value * emailsPerPage;
+  
+  // If we don't have enough emails for the next page and there are more to fetch
+  if (nextPageStart + emailsPerPage > emails.value.length && nextPageToken.value) {
+    await fetchEmails(nextPageToken.value);
+  }
+  
+  // Only increment page if we have enough emails or no more to fetch
+  if (nextPageStart < emails.value.length || !nextPageToken.value) {
+    currentPage.value++;
     paginateEmails();
   }
 }
@@ -161,14 +193,41 @@ function logout() {
   });
 }
 
+function handlePageChange(page) {
+  currentPage.value = page;
+  
+  // Check if we need to fetch more emails
+  const startIndex = (page - 1) * emailsPerPage;
+  if (startIndex + emailsPerPage >= emails.value.length && nextPageToken.value) {
+    fetchEmails(nextPageToken.value);
+  } else {
+    paginateEmails();
+  }
+}
+
 onMounted(() => {
   fetchEmails();
 });
 </script>
 
 <style scoped>
-.bg-gradient {
-  min-height: 100vh;
-  background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.list-leave-active {
+  position: absolute;
 }
 </style>

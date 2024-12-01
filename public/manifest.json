@@ -28,7 +28,9 @@
       "48": "images/icon48s.png",
       "128": "images/icon128s.png"
     },
-    "default_title": "Vue Email Reader"
+    "default_title": "Vue Email Reader",
+    "default_width": 450,
+    "default_height": 600
   },
   "oauth2": {
     "client_id": "528556636582-stsd1jf2ev9h5jg1evq8fbn0gdq7hfid.apps.googleusercontent.com",

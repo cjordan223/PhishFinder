@@ -1,22 +1,24 @@
 <template>
-    <div class="min-h-screen bg-gray-900 text-white">
+    <div class="min-h-screen w-full bg-gray-900 text-white">
         <!-- Navigation -->
-        <nav class="bg-gray-800 p-4">
-            <div class="flex items-center justify-between max-w-7xl mx-auto">
-                <div class="flex items-center space-x-4">
-                    <span
-                        class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">PhishFinder</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button class="text-gray-300 hover:text-white">
-                        <BellIcon class="h-5 w-5" />
-                    </button>
+        <nav class="w-full bg-gray-800 p-4">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center justify-between max-w-7xl mx-auto">
+                    <div class="flex items-center space-x-4">
+                        <span
+                            class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">PhishFinder</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button class="text-gray-300 hover:text-white">
+                            <BellIcon class="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </nav>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto p-6">
+        <main class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold">Welcome, User! 👋</h1>
                 <button class="bg-gray-700 px-4 py-2 rounded-md">EXPORT PDF</button>

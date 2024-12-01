@@ -137,6 +137,7 @@ class EmailProcessor {
     const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
     url.searchParams.append('maxResults', this.emailsPerBatch.toString());
     url.searchParams.append('labelIds', 'INBOX');
+    url.searchParams.append('q', 'category:primary');
     if (this.nextPageToken) {
       url.searchParams.append('pageToken', this.nextPageToken);
     }

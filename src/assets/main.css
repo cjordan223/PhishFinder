@@ -7,10 +7,17 @@ body, html {
   font-family: 'Inter', sans-serif;
 }
 
-#app {
-  min-height: 100vh;
-  width: 800px;
-  height: 800px;
+/* Extension-specific styles */
+body:not(.browser-view) {
+  width: 450px;
+  height: 600px;
+  overflow: hidden;
+}
+
+#app:not(.browser-view) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Container styles */
