@@ -1,38 +1,52 @@
 <template>
-  <div class="h-[600px] w-[450px] flex flex-col bg-gradient-to-br from-primary-light to-primary-dark">
-    <Header @logout="logout" class="flex-none" />
+  <div class="h-screen flex flex-col overflow-hidden">
+    <!-- Header -->
+    <Header class="flex-none" />
 
     <!-- Main content area -->
-    <main class="flex-1 overflow-hidden">
-      <div class="h-full bg-white/90 backdrop-blur-sm rounded-xl shadow-xl flex flex-col">
-        <!-- Loading state -->
-        <div v-if="loading" class="flex-1 flex justify-center items-center">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Email list container -->
+      <div class="flex-1 flex flex-col min-w-0">
+        <!-- Pagination controls -->
+        <div class="flex-none p-4 border-b">
+          <PaginationControls 
+            :currentPage="currentPage"
+            :totalPages="totalPages"
+            :nextPageDisabled="isNextPageDisabled"
+            @prevPage="prevPage"
+            @nextPage="nextPage"
+            @goToPage="handlePageChange"
+          />
         </div>
 
-        <!-- Error state -->
-        <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {{ errorMessage }}
-        </div>
-
-        <div v-if="!loading" class="flex-1 flex flex-col min-h-0">
-          <PaginationControls v-if="emails.length > 0" :currentPage="currentPage" :nextPageDisabled="isNextPageDisabled"
-            :totalPages="totalPages" @prevPage="prevPage" @nextPage="nextPage" @goToPage="goToPage" />
-
-          <div class="flex-1 overflow-auto">
-            <EmailList v-if="paginatedEmails.length > 0" :emails="paginatedEmails" @open="openEmailDetail" />
-          </div>
+        <!-- Email list -->
+        <div class="flex-1 overflow-y-auto">
+          <EmailList 
+            v-if="paginatedEmails.length > 0" 
+            :emails="paginatedEmails" 
+            @open="openEmailDetail" 
+          />
         </div>
       </div>
-    </main>
-  </div>
 
-  <!-- Email detail overlay -->
-  <Transition enter-active-class="transition-transform duration-300 ease-in-out" enter-from-class="translate-x-full"
-    enter-to-class="translate-x-0" leave-active-class="transition-transform duration-300 ease-in-out"
-    leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-    <EmailDetailPage v-if="selectedEmail" :email="selectedEmail" :show="!!selectedEmail" @close="closeEmailDetail" />
-  </Transition>
+      <!-- Email detail overlay -->
+      <Transition
+        enter-active-class="transition-transform duration-300 ease-in-out"
+        enter-from-class="translate-x-full"
+        enter-to-class="translate-x-0"
+        leave-active-class="transition-transform duration-300 ease-in-out"
+        leave-from-class="translate-x-0"
+        leave-to-class="translate-x-full"
+      >
+        <EmailDetailPage
+          v-if="selectedEmail"
+          :email="selectedEmail"
+          :show="!!selectedEmail"
+          @close="closeEmailDetail"
+        />
+      </Transition>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -128,19 +142,19 @@ function paginateEmails() {
   }
 }
 
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    paginateEmails();
+  }
+}
+
 function nextPage() {
   if (currentPage.value * emailsPerPage < emails.value.length) {
     currentPage.value++;
     paginateEmails();
   } else if (nextPageToken.value) {
     fetchEmails(nextPageToken.value);
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--;
-    paginateEmails();
   }
 }
 
@@ -158,9 +172,16 @@ function logout() {
   });
 }
 
-function goToPage(page) {
+function handlePageChange(page) {
   currentPage.value = page;
-  paginateEmails();
+  
+  // Check if we need to fetch more emails
+  const startIndex = (page - 1) * emailsPerPage;
+  if (startIndex + emailsPerPage >= emails.value.length && nextPageToken.value) {
+    fetchEmails(nextPageToken.value);
+  } else {
+    paginateEmails();
+  }
 }
 
 onMounted(() => {

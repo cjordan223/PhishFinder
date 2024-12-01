@@ -14,7 +14,7 @@ const props = defineProps({
     status: {
         type: String,
         required: true,
-        validator: (value) => ['safe', 'warning', 'high-risk', 'unknown'].includes(value)
+        validator: (value) => ['secure', 'warning', 'high-risk', 'caution', 'unknown'].includes(value)
     },
     tooltip: {
         type: String,
@@ -22,28 +22,34 @@ const props = defineProps({
     }
 });
 
-// Log status and tooltip
-console.log('Security Badge Status:', props.status);
-console.log('Security Badge Tooltip:', props.tooltip);
-
 const statusColor = computed(() => ({
-    'bg-green-500': props.status === 'safe',
+    'bg-green-500': props.status === 'secure',
     'bg-yellow-500': props.status === 'warning',
     'bg-red-500': props.status === 'high-risk',
+    'bg-blue-500': props.status === 'caution',
     'bg-gray-500': props.status === 'unknown'
 }));
 
 const textColor = computed(() => ({
-    'text-green-700': props.status === 'safe',
+    'text-green-700': props.status === 'secure',
     'text-yellow-700': props.status === 'warning',
     'text-red-700': props.status === 'high-risk',
+    'text-blue-700': props.status === 'caution',
     'text-gray-700': props.status === 'unknown'
 }));
 
-const statusText = computed(() => ({
-    'safe': 'Secure',
-    'warning': 'Caution',
-    'high-risk': 'High Risk',
-    'unknown': 'Unknown'
-}[props.status]));
+const statusText = computed(() => {
+    switch (props.status) {
+        case 'secure':
+            return 'Secure';
+        case 'warning':
+            return 'Warning';
+        case 'high-risk':
+            return 'High Risk';
+        case 'caution':
+            return 'Caution';
+        default:
+            return 'Unknown';
+    }
+});
 </script>

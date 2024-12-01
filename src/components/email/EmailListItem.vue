@@ -2,7 +2,8 @@
     <div @click="openEmail" class="cursor-pointer p-3 hover:bg-gray-50 border-b last:border-b-0 transition-colors"
         :class="{
             'bg-red-50 border border-red-200': securityStatus === 'high-risk',
-            'bg-yellow-50 border border-yellow-200': securityStatus === 'warning'
+            'bg-yellow-50 border border-yellow-200': securityStatus === 'warning',
+            'bg-blue-50 border border-blue-200': securityStatus === 'caution'
         }">
         <div class="flex items-center justify-between gap-2">
             <div class="flex-1 min-w-0">
@@ -57,19 +58,34 @@ const securityStatus = computed(() => {
     const analysis = securityInfo.value.analysis;
     const auth = securityInfo.value.authentication;
 
-    // Check for high-risk conditions
-    if (analysis?.isFlagged || analysis?.safeBrowsingResult?.length > 0) {
+    // High-risk conditions (real security threats)
+    if (
+        analysis?.safeBrowsingResult?.length > 0 || // Known malicious URLs
+        analysis?.linkRisks?.some(risk => risk.domainMimicry) || // Domain mimicry detected
+        analysis?.urlMismatches?.length > 0 // URL spoofing detected
+    ) {
         return 'high-risk';
     }
 
-    // Check for warning/caution conditions
-    if (hasSecurityRisks.value || auth?.summary?.includes('Fail')) {
+    // Warning conditions
+    if (
+        analysis?.linkRisks?.some(risk => risk.isSuspicious && !risk.domainMimicry) // Suspicious but not mimicry
+    ) {
         return 'warning';
     }
 
-    // Check for secure conditions
+    // Caution conditions
+    if (
+        analysis?.suspiciousKeywords?.length > 0 || // Suspicious keywords
+        auth?.summary?.includes('Fail') || // Authentication failures
+        analysis?.linkRisks?.some(risk => !risk.isSuspicious) // Normal external links
+    ) {
+        return 'caution';
+    }
+
+    // Secure conditions
     const allAuthPassed = auth?.summary?.toLowerCase().includes('pass');
-    if (allAuthPassed && !hasSecurityRisks.value) {
+    if (allAuthPassed && !analysis?.linkRisks?.length) {
         return 'secure';
     }
 
@@ -88,9 +104,19 @@ const hasSecurityRisks = computed(() => {
 
 const securityTooltip = computed(() => {
     if (!securityInfo.value) return 'Security scan pending';
-    if (securityInfo.value.analysis?.isFlagged) return 'High-risk email detected';
-    if (hasSecurityRisks.value) return 'Potential security risks detected';
-    return 'No security risks detected';
+    
+    switch (securityStatus.value) {
+        case 'high-risk':
+            return 'High-risk: Malicious URLs or domain spoofing detected';
+        case 'warning':
+            return 'Warning: Suspicious URLs or mismatches detected';
+        case 'caution':
+            return 'Caution: Contains suspicious keywords or authentication issues';
+        case 'secure':
+            return 'No security risks detected';
+        default:
+            return 'Security scan pending';
+    }
 });
 
 const isDomainSuspicious = computed(() => {

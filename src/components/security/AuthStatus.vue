@@ -1,27 +1,42 @@
 <template>
     <div class="flex flex-col space-y-2">
-        <div class="flex items-center space-x-2" v-if="props.spf">
-            <span class="auth-pill" :class="spfClass">SPF: {{ spfStatus }}</span>
-            <button @click="showSpfInfo = !showSpfInfo" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-info-circle"></i>
-            </button>
-            <div v-if="showSpfInfo" class="auth-tooltip">{{ props.spf }}</div>
+        <div class="relative flex items-center space-x-2" v-if="props.spf">
+            <span class="auth-pill group" :class="spfClass">
+                SPF: {{ spfStatus }}
+                <div class="auth-tooltip">
+                    <div class="font-medium mb-1">Sender Policy Framework</div>
+                    <p class="text-xs text-gray-200">Verifies that the sender's email server is authorized to send mail for this domain. Helps prevent email spoofing.</p>
+                    <div class="mt-2 pt-2 border-t border-gray-600">
+                        <div class="text-xs">Current Status: {{ props.spf }}</div>
+                    </div>
+                </div>
+            </span>
         </div>
 
-        <div class="flex items-center space-x-2" v-if="props.dkim">
-            <span class="auth-pill" :class="dkimClass">DKIM: {{ dkimStatus }}</span>
-            <button @click="showDkimInfo = !showDkimInfo" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-info-circle"></i>
-            </button>
-            <div v-if="showDkimInfo" class="auth-tooltip">{{ props.dkim }}</div>
+        <div class="relative flex items-center space-x-2" v-if="props.dkim">
+            <span class="auth-pill group" :class="dkimClass">
+                DKIM: {{ dkimStatus }}
+                <div class="auth-tooltip">
+                    <div class="font-medium mb-1">DomainKeys Identified Mail</div>
+                    <p class="text-xs text-gray-200">Digital signature that verifies email hasn't been tampered with during transit. Ensures email integrity.</p>
+                    <div class="mt-2 pt-2 border-t border-gray-600">
+                        <div class="text-xs">Current Status: {{ props.dkim }}</div>
+                    </div>
+                </div>
+            </span>
         </div>
 
-        <div class="flex items-center space-x-2" v-if="props.dmarc">
-            <span class="auth-pill" :class="dmarcClass">DMARC: {{ dmarcStatus }}</span>
-            <button @click="showDmarcInfo = !showDmarcInfo" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-info-circle"></i>
-            </button>
-            <div v-if="showDmarcInfo" class="auth-tooltip">{{ props.dmarc }}</div>
+        <div class="relative flex items-center space-x-2" v-if="props.dmarc">
+            <span class="auth-pill group" :class="dmarcClass">
+                DMARC: {{ dmarcStatus }}
+                <div class="auth-tooltip">
+                    <div class="font-medium mb-1">Domain-based Message Authentication</div>
+                    <p class="text-xs text-gray-200">Policy framework that uses SPF and DKIM to protect against spoofing and phishing attempts.</p>
+                    <div class="mt-2 pt-2 border-t border-gray-600">
+                        <div class="text-xs">Current Status: {{ props.dmarc }}</div>
+                    </div>
+                </div>
+            </span>
         </div>
     </div>
 </template>
@@ -52,9 +67,12 @@ const getStatus = (value) => {
         return value.includes('redirect=_spf.google.com') ? 'pass' : 'neutral';
     }
 
-    // For DMARC
+    // For DMARC - only fail if policy is reject/quarantine and fails
     if (value.includes('v=dmarc1')) {
-        return value.includes('p=none') ? 'neutral' : 'pass';
+        if (value.includes('p=reject') || value.includes('p=quarantine')) {
+            return value.includes('fail') ? 'fail' : 'pass';
+        }
+        return 'neutral'; // p=none is neutral
     }
 
     // For DKIM
@@ -84,17 +102,27 @@ const showDmarcInfo = ref(false);
 
 <style scoped>
 .auth-pill {
-    @apply px-2 py-0.5 rounded-full text-xs font-medium;
+    @apply px-2 py-0.5 rounded-full text-xs font-medium cursor-help relative;
 }
 
 .auth-tooltip {
-    @apply absolute z-10 mt-2 p-2 text-xs bg-gray-800 text-white rounded shadow-lg w-48;
+    @apply invisible opacity-0 absolute z-20 p-3 text-white bg-gray-800 rounded-lg shadow-lg
+    transform -translate-x-1/2 translate-y-2 w-64 transition-all duration-200;
     left: 50%;
-    transform: translateX(-50%);
+    top: -5px;
 }
 
-.auth-tooltip::before {
+.auth-pill:hover .auth-tooltip {
+    @apply visible opacity-100;
+    top: calc(100% + 5px);
+}
+
+/* Updated arrow position */
+.auth-tooltip::after {
     content: '';
-    @apply absolute -top-2 left-1/2 transform -translate-x-1/2 border-8 border-transparent border-b-gray-800;
+    @apply absolute w-0 h-0 border-8 border-transparent border-b-gray-800;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 </style>
