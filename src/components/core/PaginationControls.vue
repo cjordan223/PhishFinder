@@ -1,9 +1,9 @@
 <!-- PaginationControls.vue -->
 <template>
-    <div class="flex items-center justify-between bg-white/90 px-4 py-0.5 border-b">
+    <div class="flex items-center justify-between bg-white/90 px-4 py-0 border-b">
         <div class="flex flex-1 items-center justify-between">
             <button @click="$emit('prevPage')" :disabled="currentPage === 1"
-                class="relative inline-flex items-center px-2 py-0.5 text-gray-400 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="relative inline-flex items-center px-2 py-0 text-gray-400 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                 <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
             </button>
 
@@ -15,14 +15,14 @@
                             : pageNum === '...'
                                 ? 'text-gray-400 cursor-default'
                                 : 'text-gray-900 hover:bg-gray-50',
-                        'relative inline-flex items-center px-3 py-0.5 text-sm font-semibold rounded-md'
+                        'relative inline-flex items-center px-3 py-0 text-sm font-semibold rounded-md'
                     ]">
                     {{ pageNum }}
                 </button>
             </div>
 
             <button @click="$emit('nextPage')" :disabled="nextPageDisabled"
-                class="relative inline-flex items-center px-2 py-0.5 text-gray-400 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="relative inline-flex items-center px-2 py-0 text-gray-400 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                 <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
             </button>
         </div>

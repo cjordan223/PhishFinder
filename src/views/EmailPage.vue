@@ -1,14 +1,11 @@
 <template>
   <div class="h-screen flex flex-col overflow-hidden">
-    <!-- Header -->
     <Header class="flex-none" />
-
-    <!-- Main content area -->
+    
     <div class="flex-1 flex overflow-hidden">
-      <!-- Email list container -->
       <div class="flex-1 flex flex-col min-w-0">
         <!-- Pagination controls -->
-        <div class="flex-none p-4 border-b">
+        <div class="flex-none p-2 border-b">
           <PaginationControls 
             :currentPage="currentPage"
             :totalPages="totalPages"
@@ -19,13 +16,20 @@
           />
         </div>
 
-        <!-- Email list -->
-        <div class="flex-1 overflow-y-auto">
-          <EmailList 
-            v-if="paginatedEmails.length > 0" 
-            :emails="paginatedEmails" 
-            @open="openEmailDetail" 
-          />
+        <!-- Email list with transition -->
+        <div class="flex-1 relative">
+          <TransitionGroup
+            name="list"
+            tag="div"
+            class="relative"
+          >
+            <EmailList 
+              :key="currentPage"
+              v-if="paginatedEmails.length > 0" 
+              :emails="paginatedEmails" 
+              @open="openEmailDetail" 
+            />
+          </TransitionGroup>
         </div>
       </div>
 
@@ -67,7 +71,7 @@ const error = ref(false);
 const errorMessage = ref('');
 const selectedEmail = ref(null);
 const currentPage = ref(1);
-const emailsPerPage = 6;
+const emailsPerPage = 7;
 const nextPageToken = ref(null);
 const cache = new Map();
 
@@ -134,11 +138,22 @@ function paginateEmails() {
   const startIndex = (currentPage.value - 1) * emailsPerPage;
   const endIndex = startIndex + emailsPerPage;
 
+  // If we don't have enough emails for this page, fetch more
+  if (endIndex > emails.value.length && nextPageToken.value) {
+    fetchEmails(nextPageToken.value);
+    return;
+  }
+
   if (cache.has(currentPage.value)) {
     paginatedEmails.value = cache.get(currentPage.value);
   } else {
-    paginatedEmails.value = emails.value.slice(startIndex, endIndex);
-    cache.set(currentPage.value, paginatedEmails.value);
+    const pageEmails = emails.value.slice(startIndex, endIndex);
+    
+    // Only set and cache if we have a full page or no more emails to fetch
+    if (pageEmails.length === emailsPerPage || !nextPageToken.value) {
+      paginatedEmails.value = pageEmails;
+      cache.set(currentPage.value, pageEmails);
+    }
   }
 }
 
@@ -149,12 +164,18 @@ function prevPage() {
   }
 }
 
-function nextPage() {
-  if (currentPage.value * emailsPerPage < emails.value.length) {
+async function nextPage() {
+  const nextPageStart = currentPage.value * emailsPerPage;
+  
+  // If we don't have enough emails for the next page and there are more to fetch
+  if (nextPageStart + emailsPerPage > emails.value.length && nextPageToken.value) {
+    await fetchEmails(nextPageToken.value);
+  }
+  
+  // Only increment page if we have enough emails or no more to fetch
+  if (nextPageStart < emails.value.length || !nextPageToken.value) {
     currentPage.value++;
     paginateEmails();
-  } else if (nextPageToken.value) {
-    fetchEmails(nextPageToken.value);
   }
 }
 
@@ -190,5 +211,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Remove the .bg-gradient class entirely */
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.list-leave-active {
+  position: absolute;
+}
 </style>

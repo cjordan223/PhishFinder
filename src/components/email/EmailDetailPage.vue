@@ -31,7 +31,7 @@
                                 </button>
                             </div>
 
-                            <div v-if="showSecurityDetails" class="max-h-[50vh] overflow-y-auto pr-2">
+                            <div v-if="showSecurityDetails" class="max-h-[40vh] overflow-y-auto pr-2">
                                 <div class="space-y-4">
                                     <!-- Suspicious Keywords Section -->
                                     <div v-if="email.security?.analysis?.suspiciousKeywords?.length" 
@@ -50,7 +50,10 @@
                                         <h3 class="text-sm font-medium text-gray-700 mb-2">Email Authentication</h3>
                                         <AuthStatus :spf="email.security?.authentication?.spf"
                                             :dkim="email.security?.authentication?.dkim"
-                                            :dmarc="email.security?.authentication?.dmarc" />
+                                            :dmarc="email.security?.authentication?.dmarc"
+                                            :spfDetails="email.security?.authentication?.spfDetails"
+                                            :dkimDetails="email.security?.authentication?.dkimDetails"
+                                            :dmarcDetails="email.security?.authentication?.dmarcDetails" />
                                     </div>
 
                                     <!-- URL Risks Section -->

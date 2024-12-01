@@ -1,128 +1,106 @@
 <template>
-    <div class="flex flex-col space-y-2">
-        <div class="relative flex items-center space-x-2" v-if="props.spf">
-            <span class="auth-pill group" :class="spfClass">
-                SPF: {{ spfStatus }}
-                <div class="auth-tooltip">
-                    <div class="font-medium mb-1">Sender Policy Framework</div>
-                    <p class="text-xs text-gray-200">Verifies that the sender's email server is authorized to send mail for this domain. Helps prevent email spoofing.</p>
-                    <div class="mt-2 pt-2 border-t border-gray-600">
-                        <div class="text-xs">Current Status: {{ props.spf }}</div>
-                    </div>
-                </div>
-            </span>
+  <div class="space-y-3">
+    <!-- SPF Status -->
+    <div class="flex items-start gap-3">
+      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 group relative cursor-help">
+        SPF
+        <div class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+          <p class="font-medium mb-1">Sender Policy Framework (SPF)</p>
+          <p>Verifies that the sending server is authorized to send emails on behalf of this domain. Helps prevent email spoofing.</p>
         </div>
-
-        <div class="relative flex items-center space-x-2" v-if="props.dkim">
-            <span class="auth-pill group" :class="dkimClass">
-                DKIM: {{ dkimStatus }}
-                <div class="auth-tooltip">
-                    <div class="font-medium mb-1">DomainKeys Identified Mail</div>
-                    <p class="text-xs text-gray-200">Digital signature that verifies email hasn't been tampered with during transit. Ensures email integrity.</p>
-                    <div class="mt-2 pt-2 border-t border-gray-600">
-                        <div class="text-xs">Current Status: {{ props.dkim }}</div>
-                    </div>
-                </div>
-            </span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div :class="[
+          'text-xs font-medium px-2.5 py-1.5 rounded-md inline-flex items-center',
+          getStatusClass(getStatus(spfDetails || spf))
+        ]">
+          <span v-if="getStatus(spfDetails || spf) === 'pass'" class="mr-1">✓</span>
+          <span v-if="getStatus(spfDetails || spf) === 'fail'" class="mr-1">✗</span>
+          {{ spfDetails || spf || 'No record found' }}
         </div>
-
-        <div class="relative flex items-center space-x-2" v-if="props.dmarc">
-            <span class="auth-pill group" :class="dmarcClass">
-                DMARC: {{ dmarcStatus }}
-                <div class="auth-tooltip">
-                    <div class="font-medium mb-1">Domain-based Message Authentication</div>
-                    <p class="text-xs text-gray-200">Policy framework that uses SPF and DKIM to protect against spoofing and phishing attempts.</p>
-                    <div class="mt-2 pt-2 border-t border-gray-600">
-                        <div class="text-xs">Current Status: {{ props.dmarc }}</div>
-                    </div>
-                </div>
-            </span>
-        </div>
+      </div>
     </div>
+
+    <!-- DKIM Status -->
+    <div class="flex items-start gap-3">
+      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 group relative cursor-help">
+        DKIM
+        <div class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+          <p class="font-medium mb-1">DomainKeys Identified Mail (DKIM)</p>
+          <p>Digital signature that verifies email hasn't been tampered with during transit. Ensures email integrity and authenticity.</p>
+        </div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div :class="[
+          'text-xs font-medium px-2.5 py-1.5 rounded-md inline-flex items-center',
+          getStatusClass(getStatus(dkimDetails || dkim))
+        ]">
+          {{ dkimDetails || dkim || 'No record found' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- DMARC Status -->
+    <div class="flex items-start gap-3">
+      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 group relative cursor-help">
+        DMARC
+        <div class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+          <p class="font-medium mb-1">Domain-based Message Authentication (DMARC)</p>
+          <p>Policy framework that uses SPF and DKIM to detect and prevent email spoofing. Tells receiving servers how to handle authentication failures.</p>
+        </div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div :class="[
+          'text-xs font-medium px-2.5 py-1.5 rounded-md inline-flex items-center',
+          getStatusClass(getStatus(dmarcDetails || dmarc))
+        ]">
+          <span v-if="getStatus(dmarcDetails || dmarc) === 'pass'" class="mr-1">✓</span>
+          <span v-if="getStatus(dmarcDetails || dmarc) === 'fail'" class="mr-1">✗</span>
+          {{ dmarcDetails || dmarc || 'No policy found' }}
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-
-const props = defineProps({
-    spf: String,
-    dkim: String,
-    dmarc: String
+defineProps({
+  spf: String,
+  dkim: String,
+  dmarc: String,
+  spfDetails: String,
+  dkimDetails: String,
+  dmarcDetails: String
 });
 
-// Log authentication statuses
-console.log('SPF Status:', props.spf);
-console.log('DKIM Status:', props.dkim);
-console.log('DMARC Status:', props.dmarc);
+function getStatus(value) {
+  if (!value) return 'neutral';
+  value = value.toLowerCase();
 
-const getStatus = (value) => {
-    if (!value) return 'neutral';
-    value = value.toLowerCase();
+  if (value.includes('pass')) return 'pass';
+  if (value.includes('fail')) return 'fail';
 
-    if (value.includes('pass')) return 'pass';
-    if (value.includes('fail')) return 'fail';
+  // For SPF
+  if (value.includes('v=spf1')) {
+    return value.includes('redirect=') || value.includes('include=') ? 'pass' : 'neutral';
+  }
 
-    // For SPF
-    if (value.includes('v=spf1')) {
-        return value.includes('redirect=_spf.google.com') ? 'pass' : 'neutral';
-    }
+  // For DMARC
+  if (value.includes('v=dmarc1')) {
+    return value.includes('p=none') ? 'neutral' : 'pass';
+  }
 
-    // For DMARC - only fail if policy is reject/quarantine and fails
-    if (value.includes('v=dmarc1')) {
-        if (value.includes('p=reject') || value.includes('p=quarantine')) {
-            return value.includes('fail') ? 'fail' : 'pass';
-        }
-        return 'neutral'; // p=none is neutral
-    }
+  // For DKIM
+  if (value.includes('no dkim record')) return 'neutral';
 
-    // For DKIM
-    if (value.includes('no dkim record')) return 'fail';
+  return 'neutral';
+}
 
-    return 'neutral';
-};
-
-const spfStatus = computed(() => getStatus(props.spf));
-const dkimStatus = computed(() => getStatus(props.dkim));
-const dmarcStatus = computed(() => getStatus(props.dmarc));
-
-const getStatusClass = (status) => ({
-    'bg-green-100 text-green-800': status === 'pass',
-    'bg-red-100 text-red-800': status === 'fail',
-    'bg-gray-100 text-gray-800': status === 'neutral'
-});
-
-const spfClass = computed(() => getStatusClass(spfStatus.value));
-const dkimClass = computed(() => getStatusClass(dkimStatus.value));
-const dmarcClass = computed(() => getStatusClass(dmarcStatus.value));
-
-const showSpfInfo = ref(false);
-const showDkimInfo = ref(false);
-const showDmarcInfo = ref(false);
+function getStatusClass(status) {
+  return {
+    'bg-green-100 text-green-700': status === 'pass',
+    'bg-red-100 text-red-700': status === 'fail',
+    'bg-yellow-100 text-yellow-700': status === 'neutral'
+  };
+}
 </script>
-
-<style scoped>
-.auth-pill {
-    @apply px-2 py-0.5 rounded-full text-xs font-medium cursor-help relative;
-}
-
-.auth-tooltip {
-    @apply invisible opacity-0 absolute z-20 p-3 text-white bg-gray-800 rounded-lg shadow-lg
-    transform -translate-x-1/2 translate-y-2 w-64 transition-all duration-200;
-    left: 50%;
-    top: -5px;
-}
-
-.auth-pill:hover .auth-tooltip {
-    @apply visible opacity-100;
-    top: calc(100% + 5px);
-}
-
-/* Updated arrow position */
-.auth-tooltip::after {
-    content: '';
-    @apply absolute w-0 h-0 border-8 border-transparent border-b-gray-800;
-    top: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-</style>

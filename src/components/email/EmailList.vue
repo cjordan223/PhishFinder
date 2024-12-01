@@ -1,7 +1,16 @@
 <template>
-    <ul class="space-y-4">
-        <EmailListItem v-for="email in emails" :key="email.id" :email="email" @open="$emit('open', email)" />
-    </ul>
+  <TransitionGroup
+    name="email-list"
+    tag="div"
+    class="flex flex-col"
+  >
+    <EmailListItem
+      v-for="email in emails"
+      :key="email.id"
+      :email="email"
+      @click="$emit('open', email)"
+    />
+  </TransitionGroup>
 </template>
 
 <script setup>
@@ -18,7 +27,22 @@ const emit = defineEmits(['open']);
 </script>
 
 <style scoped>
-.space-y-4> :not([hidden])~ :not([hidden]) {
-    margin-top: 1rem;
+.email-list-move {
+  transition: transform 0.5s ease;
+}
+
+.email-list-enter-active,
+.email-list-leave-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.email-list-enter-from,
+.email-list-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.email-list-leave-active {
+  position: absolute;
 }
 </style>
