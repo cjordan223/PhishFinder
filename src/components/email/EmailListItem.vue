@@ -77,7 +77,7 @@ const securityStatus = computed(() => {
     // Caution conditions
     if (
         analysis?.suspiciousKeywords?.length > 0 || // Suspicious keywords
-        auth?.summary?.includes('Fail') || // Authentication failures
+        (auth?.spf?.result === 'fail' || auth?.dmarc?.result === 'fail') || // Major auth failures only
         analysis?.linkRisks?.some(risk => !risk.isSuspicious) // Normal external links
     ) {
         return 'caution';
