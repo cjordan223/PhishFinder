@@ -5,44 +5,33 @@ export function useSecurityStatus(security) {
     if (!security) return 'unknown';
 
     const analysis = security.analysis;
-    const auth = security.authentication;
 
     // High-risk conditions
-    if (
-      analysis?.safeBrowsingResult?.length > 0 || // Known malicious URLs
-      analysis?.linkRisks?.some(risk => risk.domainMimicry) || // Domain mimicry detected
-      analysis?.urlMismatches?.length > 0 // URL spoofing detected
-    ) {
-      return 'high-risk';
-    }
-
-    // Warning conditions
-    if (
-      analysis?.isFlagged || // Explicitly flagged as suspicious
-      analysis?.linkRisks?.some(risk => risk.isSuspicious) // Any suspicious links
-    ) {
+    if (analysis?.safeBrowsingResult?.length > 0 || 
+        analysis?.urlMismatches?.length > 0) {
       return 'warning';
     }
 
-    // Check authentication
-    const hasDmarcPolicy = auth?.dmarc?.toLowerCase().includes('p=reject') || 
-                          auth?.dmarc?.toLowerCase().includes('p=quarantine');
-    const authPasses = auth?.summary?.toLowerCase().includes('pass') && 
-                      !auth?.summary?.toLowerCase().includes('fail');
+    // Only flag suspicious keywords if:
+    // 1. There are 3+ matches
+    // 2. The email is not from a known legitimate domain
+    const legitimateDomains = [
+      'rocketmoney.com',
+      'indeed.com',
+      'linkedin.com',
+      'salesforce.com',
+      'mailchimp.com',
+      'sendgrid.net'
+    ];
 
-    // Secure conditions
-    if ((hasDmarcPolicy || authPasses) && !analysis?.linkRisks?.some(risk => risk.isSuspicious)) {
-      return 'secure';
-    }
+    const isFromLegitimate = legitimateDomains.some(domain => 
+      security.from?.toLowerCase().includes(domain));
 
-    // Caution conditions
-    if (
-      analysis?.suspiciousKeywords?.length >= 3 || // Multiple suspicious keywords
-      (auth?.summary?.toLowerCase().includes('fail') && !hasDmarcPolicy) // Auth failures without DMARC
-    ) {
+    if (!isFromLegitimate && 
+        analysis?.suspiciousKeywords?.some(k => k.matches.length >= 3)) {
       return 'caution';
     }
 
-    return 'secure'; // Default to secure if no specific issues found
+    return 'secure';
   });
 }
