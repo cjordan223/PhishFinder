@@ -6,15 +6,7 @@ export function useSecurityStatus(security) {
 
     const analysis = security.analysis;
 
-    // High-risk conditions
-    if (analysis?.safeBrowsingResult?.length > 0 || 
-        analysis?.urlMismatches?.length > 0) {
-      return 'warning';
-    }
-
-    // Only flag suspicious keywords if:
-    // 1. There are 3+ matches
-    // 2. The email is not from a known legitimate domain
+    // Define legitimate domains first
     const legitimateDomains = [
       'rocketmoney.com',
       'indeed.com',
@@ -27,8 +19,25 @@ export function useSecurityStatus(security) {
     const isFromLegitimate = legitimateDomains.some(domain => 
       security.from?.toLowerCase().includes(domain));
 
-    if (!isFromLegitimate && 
-        analysis?.suspiciousKeywords?.some(k => k.matches.length >= 3)) {
+    // High-risk conditions
+    if (analysis?.safeBrowsingResult?.length > 0 || 
+        analysis?.domainMimicry ||
+        analysis?.urlMismatches?.length > 0) {
+      return 'high-risk';
+    }
+
+    // Warning conditions
+    if (analysis?.linkRisks?.some(risk => risk.isSuspicious)) {
+      return 'warning';
+    }
+
+    // Caution level - Check for suspicious keywords or auth issues
+    if (!isFromLegitimate && (
+      analysis?.suspiciousKeywords?.some(k => k.matches.length >= 2) ||
+      security?.authentication?.spf === 'fail' ||
+      security?.authentication?.dkim === 'fail' ||
+      security?.authentication?.dmarc === 'fail'
+    )) {
       return 'caution';
     }
 
