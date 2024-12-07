@@ -136,7 +136,7 @@
                                                 <span class="text-sm font-medium text-gray-500">Total emails:</span>
                                                 <span class="text-sm text-gray-700">{{
                                                     senderProfile?.securityMetrics?.totalEmails || 0
-                                                }}</span>
+                                                    }}</span>
                                             </div>
 
                                             <div class="flex justify-between items-center">
@@ -144,7 +144,7 @@
                                                     emails:</span>
                                                 <span class="text-sm text-gray-700">{{
                                                     senderProfile?.securityMetrics?.suspiciousEmails || 0
-                                                }}</span>
+                                                    }}</span>
                                             </div>
 
                                             <div class="flex justify-between items-center">
@@ -152,6 +152,19 @@
                                                 <span class="text-sm text-gray-700">{{
                                                     senderProfile?.stats?.authenticationHistory?.summary?.replace(/\n\s+/g,
                                                         ', ') }}</span>
+                                            </div>
+
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-sm font-medium text-gray-500">Common words:</span>
+                                                <div class="flex flex-wrap gap-1 justify-end">
+                                                    <span v-for="word in topWords" :key="word"
+                                                        class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                                                        {{ word }}
+                                                    </span>
+                                                    <span v-if="!topWords.length" class="text-sm text-gray-400">
+                                                        No data available
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -315,6 +328,16 @@ const formatFirstSeen = (firstSeen) => {
     const dateValue = firstSeen.$date ? firstSeen.$date : firstSeen;
     return new Date(dateValue).toLocaleDateString();
 };
+
+const topWords = computed(() => {
+    if (!senderProfile.value?.languageProfile?.wordFrequency) return [];
+
+    return Object.entries(senderProfile.value.languageProfile.wordFrequency)
+        .filter(([word]) => word.length > 2) // Filter out short words
+        .sort((a, b) => b[1] - a[1]) // Sort by frequency
+        .slice(0, 5) // Take top 5
+        .map(([word]) => word);
+});
 </script>
 
 <style scoped>
