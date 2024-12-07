@@ -9,7 +9,7 @@
                 class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors">
                 Open Metrics
             </button>
-            <button @click="$emit('logout')"
+            <button @click="handleLogout"
                 class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors">
                 Logout
             </button>
@@ -18,10 +18,20 @@
 </template>
 
 <script setup>
+import { logout } from '@/utils/oauth';
 const emit = defineEmits(['logout']);
 
 function openMetrics() {
     chrome.tabs.create({ url: chrome.runtime.getURL('metrics.html') });
+}
+
+async function handleLogout() {
+    try {
+        await logout();
+        emit('logout');
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
 }
 </script>
 

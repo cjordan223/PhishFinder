@@ -1,47 +1,65 @@
 <template>
-    <div class="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm">
-        <div class="absolute inset-0 flex flex-col transform transition-all duration-300 ease-in-out"
-            :class="{ 
-                'translate-x-0 opacity-100': show, 
-                'translate-x-full opacity-0': !show 
-            }">
-            <div class="h-full flex flex-col bg-white shadow-2xl">
-                <!-- Header with back button -->
-                <div class="flex-none bg-white border-b shadow-sm">
-                    <div class="flex items-center justify-between p-4">
-                        <div class="flex items-center flex-1 min-w-0">
-                            <button @click="$emit('close')" class="p-2 hover:bg-gray-100 rounded-full mr-4 flex-shrink-0">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                            <h1 class="text-xl font-semibold truncate pr-4">{{ email.metadata?.subject || 'No Subject' }}</h1>
+    <div class="fixed inset-0 bg-gray-100 overflow-hidden">
+        <div class="h-full flex flex-col">
+            <div class="flex-grow overflow-hidden">
+                <div class="h-full flex flex-col">
+                    <div class="flex-none bg-white border-b shadow-sm">
+                        <div class="flex items-center justify-between p-4">
+                            <div class="flex items-center flex-1 min-w-0">
+                                <button @click="$emit('close')"
+                                    class="p-2 hover:bg-gray-100 rounded-full mr-4 flex-shrink-0">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <h1 class="text-xl font-semibold truncate pr-4">
+                                    {{ email.metadata?.subject || 'No Subject' }}
+                                </h1>
+                            </div>
+                            <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" class="flex-shrink-0" />
                         </div>
-                        <SecurityBadge :status="securityStatus" :tooltip="securityTooltip" class="flex-shrink-0" />
                     </div>
 
-                    <!-- Security Analysis Section -->
                     <div class="flex-none border-t">
                         <div class="p-4">
                             <div class="flex items-center justify-between mb-4">
-                                <h2 class="text-lg font-medium text-gray-900">Security Analysis</h2>
-                                <button @click="showSecurityDetails = !showSecurityDetails"
-                                    class="text-blue-600 hover:text-blue-800 text-sm">
-                                    {{ showSecurityDetails ? 'Hide Details' : 'Show Details' }}
+                                <h2 class="text-lg font-medium text-gray-900 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                    Security Analysis
+                                </h2>
+                                <button @click.prevent="showSecurityDetails = !showSecurityDetails"
+                                    class="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm transition-colors duration-200">
+                                    <span>{{ showSecurityDetails ? 'Hide Details' : 'Show Details' }}</span>
+                                    <svg class="w-4 h-4 transform transition-transform duration-200"
+                                        :class="{ 'rotate-180': showSecurityDetails }" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
                                 </button>
                             </div>
 
-                            <div v-if="showSecurityDetails" class="max-h-[40vh] overflow-y-auto pr-2">
-                                <div class="space-y-4">
+                            <transition enter-active-class="transition-all duration-300 ease-out"
+                                leave-active-class="transition-all duration-200 ease-in"
+                                enter-from-class="opacity-0 -translate-y-4" enter-to-class="opacity-100 translate-y-0"
+                                leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-4">
+                                <div v-if="showSecurityDetails" class="max-h-[300px] overflow-y-auto pr-2 space-y-4">
                                     <!-- Suspicious Keywords Section -->
-                                    <div v-if="email.security?.analysis?.suspiciousKeywords?.length" 
-                                        class="bg-gray-50 p-4 rounded-lg">
+                                    <div v-if="email.security?.analysis?.suspiciousKeywords?.length"
+                                        class="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
                                         <div class="flex items-start gap-2">
                                             <h3 class="text-sm font-medium text-amber-600 group relative cursor-help">
                                                 Suspicious Keywords
-                                                <div class="absolute left-0 top-full mt-1 w-80 p-3 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                                                <div
+                                                    class="absolute left-0 top-full mt-1 w-80 p-3 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                                                     <p class="font-medium mb-2">About Suspicious Keywords</p>
-                                                    <p class="mb-2">Keywords are analyzed for potentially suspicious patterns:</p>
+                                                    <p class="mb-2">Keywords are analyzed for potentially suspicious
+                                                        patterns:</p>
                                                     <ul class="space-y-1 list-disc pl-4">
                                                         <li>Common in phishing but also legitimate emails</li>
                                                         <li>Not inherently malicious</li>
@@ -51,16 +69,17 @@
                                                 </div>
                                             </h3>
                                         </div>
-                                        <div v-for="(category, index) in email.security.analysis.suspiciousKeywords" 
-                                            :key="index" 
-                                            class="mb-2">
-                                            <div class="text-xs text-gray-600 mb-1">Found in {{ category.location }}:</div>
+                                        <div v-for="(category, index) in email.security.analysis.suspiciousKeywords"
+                                            :key="index" class="mb-2">
+                                            <div class="text-xs text-gray-600 mb-1">Found in {{ category.location }}:
+                                            </div>
                                             <KeywordAlert :keywords="category.matches" />
                                         </div>
                                     </div>
 
                                     <!-- Authentication Section -->
-                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                    <div
+                                        class="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
                                         <h3 class="text-sm font-medium text-gray-700 mb-2">Email Authentication</h3>
                                         <AuthStatus :spf="email.security?.authentication?.spf"
                                             :dkim="email.security?.authentication?.dkim"
@@ -70,8 +89,54 @@
                                             :dmarcDetails="email.security?.authentication?.dmarcDetails" />
                                     </div>
 
+                                    <!-- Sender Profile Section -->
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-sm font-medium text-gray-700">Sender Profile</h3>
+                                            <button @click="showSenderProfile = !showSenderProfile"
+                                                class="text-blue-600 hover:text-blue-800 text-sm">
+                                                {{ showSenderProfile ? 'Hide Details' : 'Show Details' }}
+                                            </button>
+                                        </div>
+
+                                        <div v-if="showSenderProfile" class="mt-4">
+                                            <div class="grid grid-cols-2 gap-y-2 text-sm">
+                                                <div class="text-gray-500">First seen:</div>
+                                                <div class="text-right">{{
+                                                    formatFirstSeen(senderProfile?.sender?.firstSeen) }}</div>
+
+                                                <div class="text-gray-500">Total emails:</div>
+                                                <div class="text-right">{{ senderProfile?.securityMetrics?.totalEmails
+                                                    || 0 }}</div>
+
+                                                <div class="text-gray-500">Suspicious emails:</div>
+                                                <div class="text-right">{{
+                                                    senderProfile?.securityMetrics?.suspiciousEmails || 0 }}</div>
+
+                                                <div class="text-gray-500">Authentication:</div>
+                                                <div class="text-right text-xs">
+                                                    {{
+                                                        senderProfile?.lastAuthenticationStatus?.summary?.replace(/\n\s+/g,
+                                                            ', ') || 'No data' }}
+                                                </div>
+
+                                                <div class="text-gray-500">Common words:</div>
+                                                <div class="text-right flex flex-wrap justify-end gap-1">
+                                                    <span v-for="word in topWords" :key="word"
+                                                        class="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                                        {{ word }}
+                                                    </span>
+                                                    <span v-if="!topWords.length" class="text-xs text-gray-400">
+                                                        No data available
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- URL Risks Section -->
-                                    <div v-if="email.security?.analysis?.linkRisks?.length" class="bg-gray-50 p-4 rounded-lg">
+                                    <div v-if="email.security?.analysis?.linkRisks?.length"
+                                        class="bg-gray-50 p-4 rounded-lg">
                                         <UrlStatus :risks="email.security.analysis.linkRisks" />
                                     </div>
 
@@ -80,8 +145,8 @@
                                         class="bg-gray-50 p-4 rounded-lg">
                                         <h3 class="text-sm font-medium text-red-600 mb-2">URL Mismatches Detected</h3>
                                         <ul class="space-y-2">
-                                            <li v-for="(mismatch, index) in email.security.analysis.urlMismatches" :key="index"
-                                                class="text-xs bg-red-50 p-3 rounded">
+                                            <li v-for="(mismatch, index) in email.security.analysis.urlMismatches"
+                                                :key="index" class="text-xs bg-red-50 p-3 rounded">
                                                 <div class="grid grid-cols-2 gap-2">
                                                     <div>
                                                         <div class="text-gray-500">Displayed as:</div>
@@ -115,32 +180,21 @@
                                         </ul>
                                     </div>
                                 </div>
-                            </div>
+                            </transition>
                         </div>
                     </div>
-                </div>
 
-                <!-- Email content -->
-                <div class="flex-1 overflow-y-auto">
-                    <div class="p-4 min-h-full">
-                        <!-- Sender info -->
-                        <div class="mb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="font-medium truncate">{{ email.sender?.displayName ||
-                                    email.sender?.address?.split('@')[0] }}</span>
-                                <span class="text-gray-500 truncate">&lt;{{ email.sender?.address }}&gt;</span>
-                            </div>
-                            <div class="text-gray-500 text-sm">
-                                {{ formatDate(email.metadata?.date) || 'No date' }}
-                            </div>
-                        </div>
-
-                        <!-- Email body -->
+                    <div class="flex-grow overflow-y-auto p-4">
                         <div class="email-body-content prose max-w-none bg-white rounded-lg border p-6">
                             <div v-if="email.content?.htmlBody" v-html="sanitizeAndStyleContent(email.content.htmlBody)"
-                                class="rendered-html"></div>
-                            <div v-else-if="email.content?.body" class="whitespace-pre-wrap">{{ email.content.body }}</div>
-                            <div v-else class="text-gray-500 italic">No content available</div>
+                                class="rendered-html">
+                            </div>
+                            <div v-else-if="email.content?.body" class="whitespace-pre-wrap">
+                                {{ email.content.body }}
+                            </div>
+                            <div v-else class="text-gray-500 italic">
+                                No content available
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -150,12 +204,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import DOMPurify from 'dompurify';
 import SecurityBadge from '../security/SecurityBadge.vue';
 import AuthStatus from '../security/AuthStatus.vue';
 import UrlStatus from '../security/UrlStatus.vue';
-import DOMPurify from 'dompurify';
 import KeywordAlert from '../security/KeywordAlert.vue';
+import { useSecurityStatus } from '@/utils/useSecurityStatus';
 
 const props = defineProps({
     email: {
@@ -169,61 +224,51 @@ const props = defineProps({
 });
 
 const showSecurityDetails = ref(false);
+const senderProfile = ref(null);
+const showSenderProfile = ref(false);
 
-// Define hasSecurityRisks first since securityStatus depends on it
-const hasSecurityRisks = computed(() => {
-    const analysis = props.email?.security?.analysis;
-    return analysis?.linkRisks?.length > 0 ||
-        analysis?.suspiciousKeywords?.length > 0 ||
-        analysis?.urlMismatches?.length > 0;
-});
-
-// Now define securityStatus which uses hasSecurityRisks
-const securityStatus = computed(() => {
-    if (!props.email?.security) return 'unknown';
-
-    const analysis = props.email.security.analysis;
-    const auth = props.email.security.authentication;
-
-    // High-risk conditions
-    if (
-        analysis?.safeBrowsingResult?.length > 0 || // Known malicious URLs
-        analysis?.linkRisks?.some(risk => risk.domainMimicry) || // Domain mimicry detected
-        analysis?.urlMismatches?.length > 0 // URL spoofing detected
-    ) {
-        return 'high-risk';
-    }
-
-    // Warning conditions
-    if (
-        analysis?.linkRisks?.some(risk => risk.isSuspicious && !risk.domainMimicry) // Suspicious but not mimicry
-    ) {
-        return 'warning';
-    }
-
-    // Caution conditions
-    if (
-        analysis?.suspiciousKeywords?.length > 0 || // Suspicious keywords
-        auth?.summary?.includes('Fail') || // Authentication failures
-        analysis?.linkRisks?.some(risk => !risk.isSuspicious) // Normal external links
-    ) {
-        return 'caution';
-    }
-
-    // Secure conditions
-    const allAuthPassed = auth?.summary?.toLowerCase().includes('pass');
-    if (allAuthPassed && !analysis?.linkRisks?.length) {
-        return 'secure';
-    }
-
-    return 'unknown';
-});
+// Use the imported security status utility
+const securityStatus = useSecurityStatus(props.email?.security, senderProfile);
 
 const securityTooltip = computed(() => {
-    if (!props.email?.security) return 'Security scan pending';
-    if (props.email?.security?.analysis?.isFlagged) return 'High-risk email detected';
-    if (hasSecurityRisks.value) return 'Potential security risks detected';
-    return 'No security risks detected';
+    const tooltipParts = [];
+    const analysis = props.email?.security?.analysis;
+    const auth = props.email?.security?.authentication;
+
+    // High-risk indicators
+    if (analysis?.safeBrowsingResult?.length > 0) {
+        tooltipParts.push('Malicious URLs detected');
+    }
+    if (analysis?.urlMismatches?.length > 0) {
+        tooltipParts.push('URL mismatches found');
+    }
+    if (analysis?.isFlagged) {
+        tooltipParts.push('Manually flagged as suspicious');
+    }
+    if (analysis?.linkRisks?.some(risk => risk.domainMimicry && risk.isSuspicious)) {
+        tooltipParts.push('Domain spoofing detected');
+    }
+
+    // Warning indicators
+    if (analysis?.linkRisks?.some(risk => risk.isSuspicious && !risk.domainMimicry)) {
+        tooltipParts.push('Suspicious links detected');
+    }
+    if (analysis?.suspiciousKeywords?.length > 2) {
+        tooltipParts.push('Multiple suspicious keywords found');
+    }
+
+    // Authentication issues
+    if (auth) {
+        const missingAuth = [];
+        if (!auth.spf) missingAuth.push('SPF');
+        if (!auth.dkim) missingAuth.push('DKIM');
+        if (!auth.dmarc) missingAuth.push('DMARC');
+        if (missingAuth.length > 0) {
+            tooltipParts.push(`Missing authentication: ${missingAuth.join(', ')}`);
+        }
+    }
+
+    return tooltipParts.length > 0 ? tooltipParts.join('. ') : 'No security issues detected';
 });
 
 const formatDate = (date) => {
@@ -242,7 +287,6 @@ function sanitizeAndStyleContent(content) {
         return DOMPurify.sanitize(JSON.stringify(content, null, 2));
     }
 
-    // Add default styles to ensure proper rendering
     const styledContent = `
         <div style="font-family: system-ui, -apple-system, sans-serif; color: #374151; line-height: 1.5;">
             ${content}
@@ -255,6 +299,54 @@ function sanitizeAndStyleContent(content) {
         ALLOW_DATA_ATTR: false
     });
 }
+
+const fetchSenderProfile = async (emailAddress) => {
+    try {
+        console.log('🔍 Fetching sender profile for:', emailAddress);
+        const url = `http://localhost:8080/analysis/sender/${encodeURIComponent(emailAddress)}`;
+        console.log('🌐 Request URL:', url);
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch sender profile');
+
+        const data = await response.json();
+        console.log('📧 Sender Profile Response:', data);
+
+        senderProfile.value = data.profile;
+    } catch (error) {
+        console.error('❌ Error fetching sender profile:', error);
+    }
+};
+
+// Watch for changes to the email prop and fetch sender profile
+watch(() => props.email?.sender?.address, (newAddress) => {
+    if (newAddress) {
+        fetchSenderProfile(newAddress);
+    }
+});
+
+// Initial fetch when component mounts
+onMounted(() => {
+    if (props.email?.sender?.address) {
+        fetchSenderProfile(props.email.sender.address);
+    }
+});
+
+const formatFirstSeen = (firstSeen) => {
+    if (!firstSeen) return 'No Date';
+    const dateValue = firstSeen.$date ? firstSeen.$date : firstSeen;
+    return new Date(dateValue).toLocaleDateString();
+};
+
+const topWords = computed(() => {
+    if (!senderProfile.value?.languageProfile?.wordFrequency) return [];
+
+    return Object.entries(senderProfile.value.languageProfile.wordFrequency)
+        .filter(([word]) => word.length > 2) // Filter out short words
+        .sort((a, b) => b[1] - a[1]) // Sort by frequency
+        .slice(0, 5) // Take top 5
+        .map(([word]) => word);
+});
 </script>
 
 <style scoped>
@@ -272,5 +364,33 @@ function sanitizeAndStyleContent(content) {
 .rendered-html a {
     color: #2563eb;
     text-decoration: underline;
+}
+
+/* Add smooth scrollbar styling */
+.overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background-color: #CBD5E1;
+    border-radius: 3px;
+}
+
+/* Add hover effect for security cards */
+.security-card {
+    @apply transition-all duration-200 ease-in-out;
+}
+
+.security-card:hover {
+    @apply transform -translate-y-0.5;
 }
 </style>

@@ -22,6 +22,7 @@
 import { computed } from 'vue';
 import SecurityBadge from '../security/SecurityBadge.vue';
 import DOMPurify from 'dompurify';
+import { useSecurityStatus } from '@/utils/useSecurityStatus';
 
 const props = defineProps({
     email: {
@@ -32,99 +33,41 @@ const props = defineProps({
 
 const emit = defineEmits(['open']);
 
-// Safely access security info with null checks
-const securityInfo = computed(() => {
-    const security = props.email?.security;
-    if (!security) return null;
+const securityStatus = useSecurityStatus(props.email?.security);
 
-    // Ensure we have the full security object structure
-    return {
-        analysis: {
-            ...security.analysis,
-            isFlagged: security.analysis?.isFlagged || false,
-            suspiciousKeywords: security.analysis?.suspiciousKeywords || [],
-            linkRisks: security.analysis?.linkRisks || [],
-            urlMismatches: security.analysis?.urlMismatches || [],
-            safeBrowsingResult: security.analysis?.safeBrowsingResult || []
-        },
-        authentication: security.authentication || {},
-        behavioral: security.behavioral || {}
-    };
-});
+const securityTooltip = computed(() => {
+    if (!props.email?.security) return 'Security scan pending';
 
-const securityStatus = computed(() => {
-    if (!securityInfo.value) return 'unknown';
+    const analysis = props.email?.security?.analysis;
+    const auth = props.email?.security?.authentication;
 
-    const analysis = securityInfo.value.analysis;
-    const auth = securityInfo.value.authentication;
-
-    // High-risk conditions (real security threats)
+    // High-risk conditions
     if (
-        analysis?.safeBrowsingResult?.length > 0 || // Known malicious URLs
-        analysis?.linkRisks?.some(risk => risk.domainMimicry) || // Domain mimicry detected
-        analysis?.urlMismatches?.length > 0 // URL spoofing detected
+        analysis?.safeBrowsingResult?.length > 0 ||
+        analysis?.urlMismatches?.length > 0 ||
+        analysis?.isFlagged ||
+        analysis?.linkRisks?.some(risk => risk.domainMimicry && risk.isSuspicious)
     ) {
-        return 'high-risk';
+        return 'High-risk: Malicious content or phishing attempt detected';
     }
 
     // Warning conditions
     if (
-        analysis?.linkRisks?.some(risk => risk.isSuspicious && !risk.domainMimicry) // Suspicious but not mimicry
+        analysis?.linkRisks?.some(risk => risk.isSuspicious && !risk.domainMimicry) ||
+        analysis?.suspiciousKeywords?.length > 2
     ) {
-        return 'warning';
+        return 'Warning: Multiple suspicious elements detected';
     }
 
     // Caution conditions
     if (
-        analysis?.suspiciousKeywords?.length > 0 || // Suspicious keywords
-        auth?.summary?.includes('Fail') || // Authentication failures
-        analysis?.linkRisks?.some(risk => !risk.isSuspicious) // Normal external links
+        analysis?.suspiciousKeywords?.length > 0 ||
+        (auth && (!auth.spf || !auth.dkim || !auth.dmarc))
     ) {
-        return 'caution';
+        return 'Caution: Contains suspicious keywords or authentication issues';
     }
 
-    // Secure conditions
-    const allAuthPassed = auth?.summary?.toLowerCase().includes('pass');
-    if (allAuthPassed && !analysis?.linkRisks?.length) {
-        return 'secure';
-    }
-
-    return 'unknown';
-});
-
-const hasSecurityRisks = computed(() => {
-    const analysis = securityInfo.value?.analysis;
-    const auth = securityInfo.value?.authentication;
-
-    return (analysis?.linkRisks?.some(risk => risk.isSuspicious)) ||
-        (analysis?.suspiciousKeywords?.length > 0) ||
-        (analysis?.urlMismatches?.length > 0) ||
-        (auth?.summary?.includes('Fail'));
-});
-
-const securityTooltip = computed(() => {
-    if (!securityInfo.value) return 'Security scan pending';
-    
-    switch (securityStatus.value) {
-        case 'high-risk':
-            return 'High-risk: Malicious URLs or domain spoofing detected';
-        case 'warning':
-            return 'Warning: Suspicious URLs or mismatches detected';
-        case 'caution':
-            return 'Caution: Contains suspicious keywords or authentication issues';
-        case 'secure':
-            return 'No security risks detected';
-        default:
-            return 'Security scan pending';
-    }
-});
-
-const isDomainSuspicious = computed(() => {
-    return securityInfo.value?.analysis?.domainAnalysis?.isSuspicious || false;
-});
-
-const senderDisplay = computed(() => {
-    return props.email.sender?.displayName || props.email.sender?.address || 'Unknown Sender';
+    return 'No security risks detected';
 });
 
 const formattedDate = computed(() => {
@@ -134,9 +77,6 @@ const formattedDate = computed(() => {
 const openEmail = () => {
     emit('open', props.email);
 };
-
-const isFlagged = computed(() => securityInfo.value?.analysis?.isFlagged || false);
-const hasUrlMismatches = computed(() => securityInfo.value?.analysis?.urlMismatches?.length > 0);
 
 const sanitizedSnippet = computed(() => {
     return DOMPurify.sanitize(props.email?.metadata?.snippet || '');
