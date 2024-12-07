@@ -75,6 +75,51 @@
                                             :dmarcDetails="email.security?.authentication?.dmarcDetails" />
                                     </div>
 
+                                    <!-- Sender Profile Section -->
+                                    <div class="bg-gray-50 p-4 rounded-lg">
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-sm font-medium text-gray-700">Sender Profile</h3>
+                                            <button @click="showSenderProfile = !showSenderProfile"
+                                                class="text-blue-600 hover:text-blue-800 text-sm">
+                                                {{ showSenderProfile ? 'Hide Details' : 'Show Details' }}
+                                            </button>
+                                        </div>
+
+                                        <div v-if="showSenderProfile" class="mt-4">
+                                            <div class="grid grid-cols-2 gap-y-2 text-sm">
+                                                <div class="text-gray-500">First seen:</div>
+                                                <div class="text-right">{{
+                                                    formatFirstSeen(senderProfile?.sender?.firstSeen) }}</div>
+
+                                                <div class="text-gray-500">Total emails:</div>
+                                                <div class="text-right">{{ senderProfile?.securityMetrics?.totalEmails
+                                                    || 0 }}</div>
+
+                                                <div class="text-gray-500">Suspicious emails:</div>
+                                                <div class="text-right">{{
+                                                    senderProfile?.securityMetrics?.suspiciousEmails || 0 }}</div>
+
+                                                <div class="text-gray-500">Authentication:</div>
+                                                <div class="text-right text-xs">
+                                                    {{
+                                                        senderProfile?.lastAuthenticationStatus?.summary?.replace(/\n\s+/g,
+                                                    ', ') || 'No data' }}
+                                                </div>
+
+                                                <div class="text-gray-500">Common words:</div>
+                                                <div class="text-right flex flex-wrap justify-end gap-1">
+                                                    <span v-for="word in topWords" :key="word"
+                                                        class="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                                        {{ word }}
+                                                    </span>
+                                                    <span v-if="!topWords.length" class="text-xs text-gray-400">
+                                                        No data available
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- URL Risks Section -->
                                     <div v-if="email.security?.analysis?.linkRisks?.length"
                                         class="bg-gray-50 p-4 rounded-lg">
@@ -119,54 +164,6 @@
                                                 </div>
                                             </li>
                                         </ul>
-                                    </div>
-
-                                    <!-- Sender Profile Section -->
-                                    <div class="bg-white rounded-lg shadow-sm border p-4">
-                                        <h3 class="text-lg font-medium text-gray-900 mb-4">Sender Profile</h3>
-                                        <div class="space-y-3">
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm font-medium text-gray-500">First seen:</span>
-                                                <span class="text-sm text-gray-700">
-                                                    {{ formatFirstSeen(senderProfile?.sender?.firstSeen) }}
-                                                </span>
-                                            </div>
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm font-medium text-gray-500">Total emails:</span>
-                                                <span class="text-sm text-gray-700">{{
-                                                    senderProfile?.securityMetrics?.totalEmails || 0
-                                                    }}</span>
-                                            </div>
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm font-medium text-gray-500">Suspicious
-                                                    emails:</span>
-                                                <span class="text-sm text-gray-700">{{
-                                                    senderProfile?.securityMetrics?.suspiciousEmails || 0
-                                                    }}</span>
-                                            </div>
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm font-medium text-gray-500">Authentication:</span>
-                                                <span class="text-sm text-gray-700">{{
-                                                    senderProfile?.stats?.authenticationHistory?.summary?.replace(/\n\s+/g,
-                                                        ', ') }}</span>
-                                            </div>
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-sm font-medium text-gray-500">Common words:</span>
-                                                <div class="flex flex-wrap gap-1 justify-end">
-                                                    <span v-for="word in topWords" :key="word"
-                                                        class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                                                        {{ word }}
-                                                    </span>
-                                                    <span v-if="!topWords.length" class="text-sm text-gray-400">
-                                                        No data available
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -233,6 +230,7 @@ const props = defineProps({
 
 const showSecurityDetails = ref(false);
 const senderProfile = ref(null);
+const showSenderProfile = ref(false);
 
 // Use the imported security status utility
 const securityStatus = useSecurityStatus(props.email?.security, senderProfile);
