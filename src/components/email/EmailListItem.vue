@@ -35,28 +35,39 @@ const emit = defineEmits(['open']);
 
 const securityStatus = useSecurityStatus(props.email?.security);
 
-const hasSecurityRisks = computed(() => {
-    const analysis = props.email?.security?.analysis;
-    return analysis?.linkRisks?.some(risk => risk.isSuspicious) ||
-        analysis?.suspiciousKeywords?.length > 0 ||
-        analysis?.urlMismatches?.length > 0;
-});
-
 const securityTooltip = computed(() => {
     if (!props.email?.security) return 'Security scan pending';
 
-    switch (securityStatus.value) {
-        case 'high-risk':
-            return 'High-risk: Malicious URLs or domain spoofing detected';
-        case 'warning':
-            return 'Warning: Suspicious URLs or mismatches detected';
-        case 'caution':
-            return 'Caution: Contains suspicious keywords or authentication issues';
-        case 'secure':
-            return 'No security risks detected';
-        default:
-            return 'Security scan pending';
+    const analysis = props.email?.security?.analysis;
+    const auth = props.email?.security?.authentication;
+
+    // High-risk conditions
+    if (
+        analysis?.safeBrowsingResult?.length > 0 ||
+        analysis?.urlMismatches?.length > 0 ||
+        analysis?.isFlagged ||
+        analysis?.linkRisks?.some(risk => risk.domainMimicry && risk.isSuspicious)
+    ) {
+        return 'High-risk: Malicious content or phishing attempt detected';
     }
+
+    // Warning conditions
+    if (
+        analysis?.linkRisks?.some(risk => risk.isSuspicious && !risk.domainMimicry) ||
+        analysis?.suspiciousKeywords?.length > 2
+    ) {
+        return 'Warning: Multiple suspicious elements detected';
+    }
+
+    // Caution conditions
+    if (
+        analysis?.suspiciousKeywords?.length > 0 ||
+        (auth && (!auth.spf || !auth.dkim || !auth.dmarc))
+    ) {
+        return 'Caution: Contains suspicious keywords or authentication issues';
+    }
+
+    return 'No security risks detected';
 });
 
 const formattedDate = computed(() => {

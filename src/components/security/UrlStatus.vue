@@ -111,13 +111,16 @@ function processRisk(risk) {
 
 function getUrlDescription(risk, isLegitimateRedirect) {
     if (risk.safeBrowsingResult?.[0]) {
-        return 'This URL has been flagged as potentially malicious';
+        return 'This URL has been flagged as malicious';
     }
-    if (risk.domainMimicry) {
-        return 'This URL appears to mimic a legitimate domain';
+    if (risk.domainMimicry && risk.isSuspicious) {
+        return 'This URL appears to be impersonating a legitimate domain';
+    }
+    if (risk.urlMismatch) {
+        return 'The displayed URL does not match the actual destination';
     }
     if (risk.isSuspicious && !isLegitimateRedirect) {
-        return 'This URL appears in a suspicious context';
+        return 'This URL appears suspicious';
     }
     return 'External link - exercise normal caution';
 }
