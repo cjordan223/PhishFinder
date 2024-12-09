@@ -145,42 +145,53 @@ class EmailProcessor {
   }
 
   async handleMessages(request, sender, sendResponse) {
-    try {
-      if (request.action === 'performWhoisLookup') {
-        const response = await this.handleWhoisLookup(request);
-        sendResponse(response);
+    if (request.action === 'performWhoisLookup') {
+        try {
+            const response = await this.handleWhoisLookup(request);
+            console.log('Sending WHOIS response back:', response);
+            sendResponse(response);
+        } catch (error) {
+            console.error('Error in handleMessages:', error);
+            sendResponse({ success: false, error: error.message });
+        }
         return true;
-      }
-    } catch (error) {
-      console.error('Error in handleMessages:', error);
-      sendResponse({ error: error.message });
-      return true;
     }
   }
 
   async handleWhoisLookup(request) {
     try {
-      const response = await fetch(`http://localhost:8080/whois/${request.domain}/${request.emailId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          domain: request.domain,
-          emailId: request.emailId,
-          forceCheck: true
-        })
-      });
+        if (!request.domain) {
+            console.error('Missing domain for WHOIS lookup');
+            return { success: false, error: 'Missing domain' };
+        }
 
-      if (!response.ok) {
-        throw new Error(`WHOIS lookup failed: ${response.statusText}`);
-      }
+        console.log('Performing WHOIS lookup for:', request.domain);
+        const response = await fetch(`http://localhost:8080/whois/${encodeURIComponent(request.domain)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
 
-      const data = await response.json();
-      return { success: true, data };
+        if (!response.ok) {
+            throw new Error(`WHOIS lookup failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('WHOIS lookup successful:', data);
+        
+        // Store the result in chrome.storage
+        await chrome.storage.local.set({
+            [`whois_${request.domain}`]: {
+                timestamp: Date.now(),
+                data: data.whoisData
+            }
+        });
+
+        return { success: true, data: { whoisData: data.whoisData } };
     } catch (error) {
-      console.error('WHOIS lookup error:', error);
-      return { success: false, error: error.message };
+        console.error('WHOIS lookup error:', error);
+        return { success: false, error: error.message };
     }
   }
 }

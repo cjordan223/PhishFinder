@@ -179,6 +179,54 @@
                                             </li>
                                         </ul>
                                     </div>
+
+                                    <!-- Domain Information -->
+                                    <div v-if="email.sender?.domain"
+                                        class="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h3 class="text-sm font-medium text-gray-700">Domain Information</h3>
+                                            <button @click="performWhoisLookup"
+                                                class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md transition-colors duration-200"
+                                                :disabled="isWhoisLoading">
+                                                <span v-if="isWhoisLoading">Loading...</span>
+                                                <span v-else>WHOIS Lookup</span>
+                                            </button>
+                                        </div>
+
+                                        <div v-if="whoisData" class="mt-3 text-xs">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p class="text-gray-500">Registrar:</p>
+                                                    <p class="font-medium">{{ whoisData.registrar?.name || 'N/A' }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Organization:</p>
+                                                    <p class="font-medium">{{ whoisData.registrant?.organization ||
+                                                        'N/A' }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Creation Date:</p>
+                                                    <p class="font-medium">{{ formatDate(whoisData.domain?.created_date)
+                                                        }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Expiration Date:</p>
+                                                    <p class="font-medium">{{
+                                                        formatDate(whoisData.domain?.expiration_date) }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Last Updated:</p>
+                                                    <p class="font-medium">{{ formatDate(whoisData.domain?.updated_date)
+                                                        }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Country:</p>
+                                                    <p class="font-medium">{{ whoisData.registrant?.country || 'N/A' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </transition>
                         </div>
@@ -347,6 +395,58 @@ const topWords = computed(() => {
         .slice(0, 5) // Take top 5
         .map(([word]) => word);
 });
+
+const whoisData = ref(null);
+const isWhoisLoading = ref(false);
+
+async function performWhoisLookup() {
+    if (!props.email?.sender?.domain) {
+        console.error('No domain available for WHOIS lookup');
+        return;
+    }
+
+    isWhoisLoading.value = true;
+    const domain = props.email.sender.domain;
+
+    try {
+        // First check storage
+        const stored = await chrome.storage.local.get(`whois_${domain}`);
+        if (stored[`whois_${domain}`]) {
+            whoisData.value = stored[`whois_${domain}`].data;
+            console.log('Retrieved WHOIS data from storage:', whoisData.value);
+            return;
+        }
+
+        // If not in storage, request from background
+        chrome.runtime.sendMessage({
+            action: 'performWhoisLookup',
+            domain: domain
+        });
+
+        // Poll storage for result
+        const result = await new Promise((resolve, reject) => {
+            let attempts = 0;
+            const checkStorage = async () => {
+                const stored = await chrome.storage.local.get(`whois_${domain}`);
+                if (stored[`whois_${domain}`]) {
+                    resolve(stored[`whois_${domain}`].data);
+                } else if (attempts++ < 10) {
+                    setTimeout(checkStorage, 500);
+                } else {
+                    reject(new Error('WHOIS lookup timed out'));
+                }
+            };
+            checkStorage();
+        });
+
+        whoisData.value = result;
+        console.log('WHOIS data set:', whoisData.value);
+    } catch (error) {
+        console.error('Error performing WHOIS lookup:', error);
+    } finally {
+        isWhoisLoading.value = false;
+    }
+}
 </script>
 
 <style scoped>
