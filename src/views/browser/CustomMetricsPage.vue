@@ -83,20 +83,24 @@
                             <h3 class="text-xl font-semibold mb-4">Security Overview</h3>
                             <div class="space-y-4">
                                 <div class="flex justify-between items-center">
-                                    <span>Threat Level</span>
-                                    <span class="text-green-400">Low</span>
+                                    <span>User Email</span>
+                                    <span class="text-blue-400">{{ userEmail }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span>Active Threats</span>
-                                    <span class="text-red-400">3</span>
+                                    <span>Account Status</span>
+                                    <span class="text-green-400">Active</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span>Last Scan</span>
-                                    <span>2 hours ago</span>
+                                    <span>Last Login</span>
+                                    <span>{{ lastLoginDate }}</span>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span>Protected Emails</span>
-                                    <span>1,234</span>
+                                    <span>{{ protectedEmailsCount }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span>Threats Detected</span>
+                                    <span class="text-red-400">{{ threatsCount }}</span>
                                 </div>
                             </div>
                         </div>
@@ -105,7 +109,7 @@
                     <!-- Second Card -->
                     <div
                         class="bg-gray-800 rounded-lg p-6 transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                        <div class="flex items-center justify-center h-full">
+                        <div class="flex flex-col items-center justify-center h-full">
                             <div id="chart1" style="width: 100%; height: 200px;"></div>
                             <button id="refreshButton1"
                                 class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
@@ -119,30 +123,29 @@
                 <div class="grid grid-cols-3 gap-4 mb-8">
                     <div v-for="(stat, index) in stats.slice(1)" :key="index"
                         class="bg-gray-800 rounded-lg p-6 transform transition-transform duration-200 hover:scale-105 hover:shadow-lg">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div v-if="stat.label === 'Compliant Devices'">
-                                    <div id="chart2" style="width: 220px; height: 140px;"></div>
-                                    <button id="refreshButton2"
-                                        class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
-                                        Refresh Chart
-                                    </button>
-                                </div>
-                                <div v-else-if="stat.label === 'Policies Executed'">
-                                    <div id="chart3" style="width: 220px; height: 140px;"></div>
-                                    <button id="refreshButton3"
-                                        class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
-                                        Refresh Chart
-                                    </button>
-                                </div>
-                                <div v-else-if="stat.label === 'Available Updates'">
-                                    <div id="chart4" style="width: 220px; height: 140px;"></div>
-                                    <button id="refreshButton4"
-                                        class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
-                                        Refresh Chart
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <!-- Chart container based on stat label -->
+                            <template v-if="stat.label === 'Policies Executed'">
+                                <div id="chart2" style="width: 100%; height: 140px;"></div>
+                                <button id="refreshButton2"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                                    Refresh Chart
+                                </button>
+                            </template>
+                            <template v-else-if="stat.label === 'Available Updates'">
+                                <div id="chart3" style="width: 100%; height: 140px;"></div>
+                                <button id="refreshButton3"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                                    Refresh Chart
+                                </button>
+                            </template>
+                            <template v-else>
+                                <div id="chart4" style="width: 100%; height: 140px;"></div>
+                                <button id="refreshButton4"
+                                    class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                                    Refresh Chart
+                                </button>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -153,7 +156,7 @@
 
 <script setup>
 import { BellIcon, ChartBarIcon } from '@heroicons/vue/24/outline';
-import { reactive, onMounted } from 'vue';
+import { reactive, onMounted, nextTick, ref } from 'vue';
 import { apiHelpers } from '@/utils/utils';
 import { loadFull } from "tsparticles";
 
@@ -179,6 +182,11 @@ const stats = reactive([
     }
 ]);
 
+const userEmail = ref('');
+const lastLoginDate = ref('');
+const protectedEmailsCount = ref(0);
+const threatsCount = ref(0);
+
 const particlesInit = async (engine) => {
     try {
         await loadFull(engine);
@@ -192,18 +200,41 @@ function navigateToDetails() {
     chrome.tabs.create({ url: chrome.runtime.getURL('detailed-metrics.html') });
 }
 
-onMounted(() => {
-    initializeChart();
-});
-
 async function initializeChart() {
     try {
-        const token = await apiHelpers.getAuthToken();
-        const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo?access_token=' + token);
-        const userData = await response.json();
-        const userEmail = userData.email;
+        // Increase wait time for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        console.log('User email:', userEmail);
+        // Check if elements exist before proceeding
+        const chartElements = ['chart1', 'chart2', 'chart3', 'chart4'].map(id =>
+            document.getElementById(id)
+        );
+
+        if (chartElements.some(el => !el)) {
+            console.error('Chart elements not found in DOM');
+            return;
+        }
+
+        const token = await apiHelpers.getAuthToken({
+            interactive: true,
+            prompt: 'consent'
+        });
+
+        if (!token) {
+            console.warn('No authentication token available');
+            return;
+        }
+
+        const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo?access_token=' + token);
+        if (!response.ok) {
+            throw new Error('Failed to fetch user info');
+        }
+
+        const userData = await response.json();
+        userEmail.value = userData.email;
+        lastLoginDate.value = new Date().toLocaleString();
+
+        console.log('User email:', userEmail.value);
 
         const ChartsEmbedSDK = await import('@mongodb-js/charts-embed-dom');
         const sdk = new ChartsEmbedSDK.default({
@@ -212,7 +243,7 @@ async function initializeChart() {
 
         const emailFilter = {
             'receiver.address': {
-                $regex: userEmail,
+                $regex: userEmail.value,
                 $options: 'i'
             }
         };
@@ -228,20 +259,13 @@ async function initializeChart() {
             scalingWidth: 'scale',
             scalingHeight: 'fixed',
             filter: emailFilter,
-            debug: true
+            debug: true,
+            height: '200px' // Explicitly set height
         });
 
-        try {
-            await chart1.render(document.getElementById('chart1'));
-        } catch (error) {
-            console.error('Chart render error:', error);
-            try {
-                const parsedError = JSON.parse(error.message);
-                console.error('Parsed error:', parsedError);
-            } catch (e) {
-                console.error('Raw error:', error.message);
-            }
-        }
+        const chart1Element = document.getElementById('chart1');
+        if (!chart1Element) throw new Error('Chart1 element not found');
+        await chart1.render(chart1Element);
 
         document.getElementById('refreshButton1').addEventListener('click', () => chart1.refresh());
 
@@ -265,17 +289,34 @@ async function initializeChart() {
             await chartInstance.render(document.getElementById(chart.id));
             document.getElementById(chart.buttonId).addEventListener('click', () => chartInstance.refresh());
         }
+
+        try {
+            const statsResponse = await fetch(`http://localhost:8080/analysis/user-stats/${encodeURIComponent(userEmail.value)}`);
+            if (statsResponse.ok) {
+                const stats = await statsResponse.json();
+                protectedEmailsCount.value = stats.totalScannedEmails || 0;
+                threatsCount.value = stats.totalThreats || 0;
+            }
+        } catch (error) {
+            console.error('Failed to fetch user stats:', error);
+        }
     } catch (error) {
         console.error('Failed to initialize chart:', error);
         const elements = ['chart1', 'chart2', 'chart3', 'chart4'];
         elements.forEach(id => {
             const element = document.getElementById(id);
             if (element) {
-                element.innerHTML = 'Chart failed to load';
+                element.innerHTML = 'Chart failed to load. Please check authentication.';
             }
         });
     }
 }
+
+// Ensure DOM is fully loaded before initializing charts
+onMounted(async () => {
+    await nextTick();
+    await initializeChart();
+});
 </script>
 
 <style scoped>

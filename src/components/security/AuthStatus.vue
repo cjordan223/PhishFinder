@@ -2,13 +2,19 @@
   <div class="space-y-3">
     <!-- SPF Status -->
     <div class="flex items-start gap-3">
-      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 group relative cursor-help">
+      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 flex items-center gap-1">
         SPF
-        <div
-          class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-          <p class="font-medium mb-1">Sender Policy Framework (SPF)</p>
-          <p>Verifies that the sending server is authorized to send emails on behalf of this domain. Helps prevent email
-            spoofing.</p>
+        <div class="group relative cursor-help">
+          <div class="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center text-gray-500">
+            <span class="text-xs">i</span>
+          </div>
+          <div
+            class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+            <p class="font-medium mb-1">Sender Policy Framework (SPF)</p>
+            <p>Verifies that the sending server is authorized to send emails on behalf of this domain. Helps prevent
+              email
+              spoofing.</p>
+          </div>
         </div>
       </div>
       <div class="flex-1 min-w-0">
@@ -25,13 +31,19 @@
 
     <!-- DKIM Status -->
     <div class="flex items-start gap-3">
-      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 group relative cursor-help">
+      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 flex items-center gap-1">
         DKIM
-        <div
-          class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-          <p class="font-medium mb-1">DomainKeys Identified Mail (DKIM)</p>
-          <p>Digital signature that verifies email hasn't been tampered with during transit. Ensures email integrity and
-            authenticity.</p>
+        <div class="group relative cursor-help">
+          <div class="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center text-gray-500">
+            <span class="text-xs">i</span>
+          </div>
+          <div
+            class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+            <p class="font-medium mb-1">DomainKeys Identified Mail (DKIM)</p>
+            <p>Digital signature that verifies email hasn't been tampered with during transit. Ensures email integrity
+              and
+              authenticity.</p>
+          </div>
         </div>
       </div>
       <div class="flex-1 min-w-0">
@@ -46,13 +58,18 @@
 
     <!-- DMARC Status -->
     <div class="flex items-start gap-3">
-      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 group relative cursor-help">
+      <div class="w-14 text-xs font-medium text-gray-500 pt-1.5 flex items-center gap-1">
         DMARC
-        <div
-          class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-          <p class="font-medium mb-1">Domain-based Message Authentication (DMARC)</p>
-          <p>Policy framework that uses SPF and DKIM to detect and prevent email spoofing. Tells receiving servers how
-            to handle authentication failures.</p>
+        <div class="group relative cursor-help">
+          <div class="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center text-gray-500">
+            <span class="text-xs">i</span>
+          </div>
+          <div
+            class="absolute left-0 top-full mt-1 w-72 p-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+            <p class="font-medium mb-1">Domain-based Message Authentication (DMARC)</p>
+            <p>Policy framework that uses SPF and DKIM to detect and prevent email spoofing. Tells receiving servers how
+              to handle authentication failures.</p>
+          </div>
         </div>
       </div>
       <div class="flex-1 min-w-0">
