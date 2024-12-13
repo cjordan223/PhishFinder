@@ -27,6 +27,7 @@ export default defineConfig({
         popup: 'index.html',
         background: 'src/background.js',
         metrics: 'metrics.html',
+        'detailed-metrics': 'detailed-metrics.html'
       },
       output: {
         format: 'es',

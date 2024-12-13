@@ -1,13 +1,10 @@
 import { createApp } from 'vue';
-import CustomMetricsPage from './views/browser/CustomMetricsPage.vue';
+import DetailedMetricsPage from './views/browser/DetailedMetricsPage.vue';
 import Particles from "vue3-particles";
 import './assets/tailwind.css';
 import './assets/main.css';
 import './assets/browser.css';
 
-const app = createApp(CustomMetricsPage);
-
-// Register Particles plugin
+const app = createApp(DetailedMetricsPage);
 app.use(Particles);
-
-app.mount('#browser-app');
+app.mount('#browser-app'); 

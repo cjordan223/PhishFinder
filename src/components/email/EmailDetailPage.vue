@@ -32,16 +32,18 @@
                                     </svg>
                                     Security Analysis
                                 </h2>
-                                <button @click.prevent="showSecurityDetails = !showSecurityDetails"
-                                    class="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm transition-colors duration-200">
-                                    <span>{{ showSecurityDetails ? 'Hide Details' : 'Show Details' }}</span>
-                                    <svg class="w-4 h-4 transform transition-transform duration-200"
-                                        :class="{ 'rotate-180': showSecurityDetails }" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <button @click.prevent="showSecurityDetails = !showSecurityDetails"
+                                        class="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm transition-colors duration-200">
+                                        <span>{{ showSecurityDetails ? 'Hide Details' : 'Show Details' }}</span>
+                                        <svg class="w-4 h-4 transform transition-transform duration-200"
+                                            :class="{ 'rotate-180': showSecurityDetails }" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
 
                             <transition enter-active-class="transition-all duration-300 ease-out"
@@ -178,6 +180,93 @@
                                                 </div>
                                             </li>
                                         </ul>
+                                    </div>
+
+                                    <!-- Domain Information -->
+                                    <div v-if="email.sender?.domain"
+                                        class="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h3 class="text-sm font-medium text-gray-700">Domain Information</h3>
+                                            <button @click="performWhoisLookup"
+                                                class="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md transition-colors duration-200"
+                                                :disabled="isWhoisLoading">
+                                                <span v-if="isWhoisLoading">Loading...</span>
+                                                <span v-else>WHOIS Lookup</span>
+                                            </button>
+                                        </div>
+
+                                        <div v-if="whoisData" class="mt-3 text-xs">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p class="text-gray-500">Registrar:</p>
+                                                    <p class="font-medium">{{ whoisData.registrar?.name || 'N/A' }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Organization:</p>
+                                                    <p class="font-medium">{{ whoisData.registrant?.organization ||
+                                                        'N/A' }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Creation Date:</p>
+                                                    <p class="font-medium">{{ formatDate(whoisData.domain?.created_date)
+                                                        }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Expiration Date:</p>
+                                                    <p class="font-medium">{{
+                                                        formatDate(whoisData.domain?.expiration_date) }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Last Updated:</p>
+                                                    <p class="font-medium">{{ formatDate(whoisData.domain?.updated_date)
+                                                        }}</p>
+                                                </div>
+                                                <div>
+                                                    <p class="text-gray-500">Country:</p>
+                                                    <p class="font-medium">{{ whoisData.registrant?.country || 'N/A' }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- AI Analysis Results -->
+                                    <div
+                                        class="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow duration-200">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h3 class="text-sm font-medium text-gray-700">AI Content Analysis</h3>
+                                            <button @click="performAIAnalysis"
+                                                class="flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-sm transition-colors duration-200"
+                                                :disabled="isAIAnalyzing">
+                                                <span v-if="isAIAnalyzing">Analyzing...</span>
+                                                <span v-else>AI Analysis</span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Error State -->
+                                        <div v-if="aiError" class="text-red-600 text-sm mb-2">
+                                            {{ aiError }}
+                                        </div>
+
+                                        <!-- Success State -->
+                                        <div v-if="aiAnalysisResult">
+                                            <div class="flex items-center gap-4">
+                                                <div class="flex-1">
+                                                    <div class="h-2 bg-gray-200 rounded-full">
+                                                        <div class="h-2 bg-purple-600 rounded-full"
+                                                            :style="{ width: `${aiAnalysisResult.score}%` }">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-sm font-medium">
+                                                    {{ aiAnalysisResult.score }}% AI Generated
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-2">
+                                                This score indicates the likelihood that the content was generated by
+                                                AI.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </transition>
@@ -347,6 +436,110 @@ const topWords = computed(() => {
         .slice(0, 5) // Take top 5
         .map(([word]) => word);
 });
+
+const whoisData = ref(null);
+const isWhoisLoading = ref(false);
+
+async function performWhoisLookup() {
+    if (!props.email?.sender?.domain) {
+        console.error('No domain available for WHOIS lookup');
+        return;
+    }
+
+    isWhoisLoading.value = true;
+    const domain = props.email.sender.domain;
+
+    try {
+        // First check storage
+        const stored = await chrome.storage.local.get(`whois_${domain}`);
+        if (stored[`whois_${domain}`]) {
+            whoisData.value = stored[`whois_${domain}`].data;
+            console.log('Retrieved WHOIS data from storage:', whoisData.value);
+            return;
+        }
+
+        // If not in storage, request from background
+        chrome.runtime.sendMessage({
+            action: 'performWhoisLookup',
+            domain: domain
+        });
+
+        // Poll storage for result
+        const result = await new Promise((resolve, reject) => {
+            let attempts = 0;
+            const checkStorage = async () => {
+                const stored = await chrome.storage.local.get(`whois_${domain}`);
+                if (stored[`whois_${domain}`]) {
+                    resolve(stored[`whois_${domain}`].data);
+                } else if (attempts++ < 10) {
+                    setTimeout(checkStorage, 500);
+                } else {
+                    reject(new Error('WHOIS lookup timed out'));
+                }
+            };
+            checkStorage();
+        });
+
+        whoisData.value = result;
+        console.log('WHOIS data set:', whoisData.value);
+    } catch (error) {
+        console.error('Error performing WHOIS lookup:', error);
+    } finally {
+        isWhoisLoading.value = false;
+    }
+}
+
+const isAIAnalyzing = ref(false);
+const aiAnalysisResult = ref(null);
+const aiError = ref(null);
+
+async function performAIAnalysis() {
+    if (!props.email?.content?.body && !props.email?.content?.htmlBody) {
+        aiError.value = 'No content available for analysis';
+        return;
+    }
+
+    isAIAnalyzing.value = true;
+    aiError.value = null;
+
+    try {
+        // Get text content, preferring plain text over HTML
+        let text = props.email.content.body ||
+            props.email.content.htmlBody.replace(/<[^>]*>/g, '');
+
+        // Trim and clean the text
+        text = text.trim();
+
+        // Check word count requirements (matching backend)
+        const wordCount = text.split(/\s+/).length;
+        if (wordCount < 10) {
+            aiError.value = 'Text must be at least 10 words long';
+            return;
+        }
+
+        const response = await fetch('http://localhost:8080/analysis/ai-analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'AI analysis failed');
+        }
+
+        const result = await response.json();
+        aiAnalysisResult.value = result;
+        console.log('AI Analysis Result:', result);
+    } catch (error) {
+        console.error('Error performing AI analysis:', error);
+        aiError.value = error.message;
+    } finally {
+        isAIAnalyzing.value = false;
+    }
+}
 </script>
 
 <style scoped>
