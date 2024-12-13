@@ -7,38 +7,87 @@ PhishFinder is a Chrome extension built with Vue.js that reads user emails using
 
 [Back End Code](https://github.com/cjordan223/PhishFinder-Backend/)
 
-## Installation and Setup
+## Technical Implementation
 
-```
-git clone https://github.com/cjordan223/PhishFinder
-cd PhishFinder
-npm install
-npm run build
-```
+### Frontend Architecture
+- Vue.js 3 with Composition API
+- Tailwind CSS for styling
+- Real-time security status updates
+- Responsive design for extension popup
 
-1. **Load the Extension:**
-   - Open Chrome's Extensions Manager.
-   - Select the **dist** folder after clicking **Load Unpacked**.
-   - Pin the extension, click login with google and follow the OAuth steps
+### Security Analysis Pipeline
+1. Email Authentication
+   - SPF, DKIM, DMARC verification
+   - Domain authentication checks
+   - SSL/TLS validation
 
+2. Content Analysis
+   - Natural language processing
+   - Pattern matching
+   - Keyword detection
+   - URL safety verification
 
+3. Threat Detection
+   - Domain spoofing detection
+   - Phishing attempt identification
+   - Suspicious content flagging
+   - URL mismatch detection
 
+## Installation
 
-2. **Build and Reload:**
-   - After making any changes, rebuild
-     ```bash
-     npm run build
-     ```
-   - Refresh extension
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/cjordan223/PhishFinder
+   cd PhishFinder
+   ```
 
-       ![image](https://github.com/user-attachments/assets/1c7db707-2240-4f38-9c76-a9e740567cca)
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
+3. Build the extension:
+   ```bash
+   npm run build
+   ```
 
+4. Load in Chrome:
+   - Open Chrome Extensions (chrome://extensions/)
+   - Enable Developer Mode
+   - Click "Load unpacked"
+   - Select the `dist` folder
 
- **Progress:**
-     ![image](public/images/fic1.png)
-     ![image](public/images/fic2.png)
-     ![image](public/images/fic3.png)
+## Usage
 
+1. Click the PhishFinder icon in Chrome toolbar
+2. Login with Gmail account
+3. Grant necessary permissions
+4. Access email security analysis
+5. View detailed security metrics
 
+## Security Features
+
+### Email Authentication
+- Complete SPF, DKIM, and DMARC verification
+- Domain authentication status
+- SSL/TLS connection validation
+
+### Content Analysis
+- AI-powered text analysis
+- Suspicious keyword detection
+- URL safety verification
+- Domain reputation checking
+
+### Threat Detection
+- Real-time phishing attempt detection
+- Domain spoofing identification
+- Suspicious content flagging
+- URL mismatch alerts
+
+## Future Enhancements
+- Enhanced AI analysis capabilities
+- Additional authentication methods
+- Expanded metrics dashboard
+- Real-time threat intelligence integration
+- Advanced behavioral analysis
 
