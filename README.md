@@ -91,3 +91,13 @@ PhishFinder is a Chrome extension built with Vue.js that reads user emails using
 - Real-time threat intelligence integration
 - Advanced behavioral analysis
 
+## Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+This project is licensed under the MIT License.
+
