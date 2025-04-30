@@ -1,8 +1,28 @@
+
 # PhishFinder-Frontend
+
+## 🏆 Awards
+
+***Winner of Most Innovative Project at the 2024 Capstone Festival, CSU Monterey Bay***
 
 ## Project Overview
 
-PhishFinder is a Chrome extension built with Vue.js that reads user emails using OAuth. This is the frontend Vue.js application only.
+PhishFinder is a chrome extension designed to enhance email security by identifying and flagging phishing and spearphishing patterns. Built with modern web technologies and integrating with Gmail's API, it provides real-time security analysis of incoming emails.
+
+
+## Demo
+
+[![Demo Video](https://img.youtube.com/vi/bYpPd5KmwMw/0.jpg)](https://www.youtube.com/watch?v=bYpPd5KmwMw)
+
+## Project Documentation
+
+| Document | Link |
+|----------|------|
+| 📄 Comprehensive Project Proposal | <https://bit.ly/4jybfwn> |
+| 📝 Progress Report | <https://bit.ly/3Sf00g0> |
+
+
+ *This is the frontend Vue.js application only.*
 
 
 [Back End Code](https://github.com/cjordan223/PhishFinder-Backend/)
